@@ -3,6 +3,7 @@ import pathlib
 import shutil
 import subprocess
 import tempfile
+import os
 
 import pytest
 import yaml
@@ -14,7 +15,7 @@ def docker_run_helper(image_name: str, workdir: pathlib.Path, molecule: pathlib.
 
 @pytest.fixture
 def image_name():
-    image_name = subprocess.check_output(["git","describe"], encoding="utf8")
+    image_name = subprocess.check_output(["git","describe"], encoding="utf8").replace('/v',':')
     return image_name.strip()
 
 def molecules() -> list[pathlib.Path]:
@@ -33,6 +34,7 @@ def test_calculators(molecule: pathlib.Path, calculator: pathlib.Path, image_nam
     output_directory = pathlib.Path(__file__).parent / "test_outputs" / calculator.name / molecule.name
     output_directory.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmpdir:
+        os.chmod(tmpdir, 0o777)
         docker_run_helper(image_name, tmpdir, molecule, calculator)
         resultfile = pathlib.Path(tmpdir)/"result.yml"
         assert resultfile.is_file(), "Did not find result.yml"

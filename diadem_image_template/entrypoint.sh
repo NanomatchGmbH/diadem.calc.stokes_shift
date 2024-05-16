@@ -3,6 +3,10 @@
 # This file will start automatically in your docker run. You can assume the presence of a 
 # molecule.yml and a calculator.yml in the work directory.
 
+# export ... resources here
+
+python /opt/get_mobility.py
+
 # Make sure that after this script finishes a result.yml exists.
 # The workdir_bundle.tar.gz will also be staged out for debugging purposes, if you create it. 
 
