@@ -1,0 +1,50 @@
+Engine: PySCF
+Memory (MB): 16000.0
+Threads: '4'
+DFT Engine:
+  DFTB+ Settings:
+    D3(BJ) Dispersion Correction: false
+    Partial Charge Method: CM3
+  Psi4 Settings:
+    Basis: def2-SVP
+    D3(BJ) Dispersion Correction: false
+    Functional: B3LYP
+    Geometry Convergence: normal
+    Partial Charge Method: ESP
+    Preoptimization: DFTB
+    SCF Convergence: fast
+  PySCF Settings:
+    basis: def2-SVP
+    functional: B3LYP
+    Partial Charge Method: ESP
+    Preoptimization: None
+    gridsize: fast
+  Turbomole Settings:
+    Basis: def2-SVP
+    D3(BJ) Dispersion Correction: false
+    Functional: B3LYP
+    Geometry Convergence: normal
+    Partial Charge Method: ESP
+    Preoptimization: None
+    SCF Convergence: normal
+    static_polarizability: false
+  XTB Settings:
+    GFN: '2'
+    Geometry Convergence: normal
+    Optimization Cycles: '2000'
+    Partial Charge Method: CM5
+  w_fit:
+    do_w_fit: false
+    fit_to: EA
+    guess_w: normal
+    no_cosmo: false
+    target_value: 0.0
+Molecule Settings:
+  Calculate UV/VIS spectrum: false
+  Charge: 0
+  Excited State of Interest: 0
+  Molecule (Mol2): input_molecule.mol2
+  Molecule Identifier: F6L
+  Multiplicity: '1'
+  Optimize Molecule: true
+  Parameter File: default
