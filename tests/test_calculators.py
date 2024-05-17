@@ -36,6 +36,11 @@ def test_calculators(molecule: pathlib.Path, calculator: pathlib.Path, image_nam
     with tempfile.TemporaryDirectory() as tmpdir:
         os.chmod(tmpdir, 0o777)
         docker_run_helper(image_name, tmpdir, molecule, calculator)
+
+        logfile = pathlib.Path(tmpdir) / "log.txt"
+        assert logfile.is_file(), "Did not find log.txt"
+        shutil.copy(logfile, output_directory / "log.txt")
+
         resultfile = pathlib.Path(tmpdir)/"result.yml"
         assert resultfile.is_file(), "Did not find result.yml"
         ref_resultfile = output_directory/"result_reference.yml"
@@ -48,3 +53,5 @@ def test_calculators(molecule: pathlib.Path, calculator: pathlib.Path, image_nam
         else:
             print("Did not find reference. Will copy result.yml.")
             shutil.copy(resultfile, ref_resultfile)
+
+
