@@ -34,6 +34,21 @@ structlog.configure(
 # Create a logger
 logger = structlog.get_logger()
 
+
+def list_directory_contents(path='.'):
+    """
+    List the contents of a directory and log it.
+    """
+    try:
+        contents = list(pathlib.Path(path).iterdir())
+        for item in contents:
+            logger.info(f"Found item: {item.name}", item_type="directory" if item.is_dir() else "file", size=item.stat().st_size)
+        return contents
+    except Exception as e:
+        logger.error("Failed to list directory contents", error=str(e))
+        raise
+
+
 try:
     with open("molecule.yml", 'rt') as infile:
         moldict = yaml.safe_load(infile)
@@ -61,13 +76,17 @@ inchi = moldict["inchi"]
 inchiKey = moldict["inchiKey"]
 
 # we generate a bad 3d structure
-with open("mol.inchi",'w') as outfile:
+mol_inchi = 'mol.inchi'
+with open(mol_inchi, 'w') as outfile:
     outfile.write(f"{inchi}\n")
 
 
 # 1. get 3D model of the molecule
 
-command = f"obabel -i inchi mol.inchi -o xyz -O mol.xyz --gen3d"
+logger.info("Generate 3D conformer of the molecule . . .")
+
+initial_conformer_xyz = 'mol.xyz'
+command = f"obabel -i inchi {mol_inchi} -o xyz -O {initial_conformer_xyz} --gen3d"
 subprocess.check_output(shlex.split(command))
 
 #1.opt. optimizw using xtb from xtb, not from parametrizer.
@@ -75,9 +94,7 @@ subprocess.check_output(shlex.split(command))
 command = "xtb mol.xyz --opt"
 output = subprocess.check_output(shlex.split(command), encoding="utf8", text=True).split("\n")
 
-logger.info("Terra incognito")
-
-
+logger.info("Transfer xyz to mol2 . . .")
 
 #1.end: transform to mol2
 
@@ -87,8 +104,8 @@ output_mol2 = 'input_molecule.mol2'
 command = f"obabel -i xyz {input_xyz} -o mol2 -O {output_mol2}"
 subprocess.check_output(shlex.split(command))
 
-input_molecule = pathlib.Path.cwd() / "input_molecule.mol2"
-assert input_molecule.is_file(), f"Required file {input_molecule} does not exist"
+input_molecule_for_parametrizer = pathlib.Path.cwd() / output_mol2
+assert input_molecule_for_parametrizer.is_file(), f"Required file {input_molecule_for_parametrizer} does not exist"
 
 env_vars = dict(os.environ)
 logger.info("Environment variables at start", environment=env_vars)
@@ -99,12 +116,12 @@ logger.info("Number of OpenMP threads", omp_threads=env_vars.get('OMP_NUM_THREAD
 logger.info("CPU binding policy", slurm_cpu_bind=env_vars.get('SLURM_CPU_BIND', 'N/A'))
 
 
-# 2. optimize the molecule using Parametrizer, without TM.
+# 2. Parametrizer.
 # Define the source and destination paths
 source_path = '/opt/tmpl/parametrizer/parametrizer_settings.yml'
 destination_path = './parametrizer_settings.yml'  # Current directory
 
-# Copy the file
+# Copy the parametrizer_settings.yml 
 try:
     shutil.copy(source_path, destination_path)
     print(f"Copied {source_path} to {destination_path}")
@@ -141,6 +158,16 @@ except Exception as e:
     logger.error("An error occurred", error=str(e))
     raise
 
+# check after Parametrizer:
+output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
+molecule_spf_from_parametrizer = "molecule.spf"
+required_files_after_parametrizer = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer]
+for required_file in required_files_after_parametrizer:
+    assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
+
+# 3. DHP.
+logger.info("DHP starts . . .")
+
 ###### -->
 # we calculate homo and lumo
 #command = "xtb xtbopt.xyz"
@@ -160,6 +187,11 @@ resultdict =  { inchiKey: {} }  # dummy output
 #            value = float(splitline[-2])
 #            resultdict[inchiKey][tag] = value
 ###### <--
+
+# before we extract and write the results, we want to show what we have in the working dir after simulations are complete
+
+logger.info("Listing directory contents at the end")
+list_directory_contents()
 
 
 #!--> dummy output
