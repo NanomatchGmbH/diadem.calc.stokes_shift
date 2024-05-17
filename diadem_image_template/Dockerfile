@@ -9,4 +9,6 @@ RUN micromamba install --name base --yes --file /tmp/env.lock && \
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./opt/. /opt/
 COPY --chown=$MAMBA_USER:$MAMBA_USER ./entrypoint.sh /opt/entrypoint.sh
 
+ENV WIBU_OVERRIDE replace_with_the_actual_value
+
 ENTRYPOINT ["/usr/local/bin/_entrypoint.sh", "/opt/entrypoint.sh"]
