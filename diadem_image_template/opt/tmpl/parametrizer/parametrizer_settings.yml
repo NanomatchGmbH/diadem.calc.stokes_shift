@@ -1,7 +1,7 @@
-Engine: PySCF
-Memory (MB): 16000.0
-Threads: '4'
 DFT Engine:
+  Engine: PySCF
+  Memory (MB): 16000.0
+  Threads: '4'
   DFTB+ Settings:
     D3(BJ) Dispersion Correction: false
     Partial Charge Method: CM3
