@@ -3,7 +3,10 @@
 # This file will start automatically in your docker run. You can assume the presence of a 
 # molecule.yml and a calculator.yml in the work directory.
 
-# export ... resources here
+export OMP_NUM_THREADS=$(nproc)  # nproc returns the number of available cores
+# export NM_LICENSE_SERVER=IP < -- ?
+
+export NM_LICENSE_SERVER=123.123.123.123
 
 python /opt/get_mobility.py
 
