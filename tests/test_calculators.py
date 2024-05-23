@@ -29,6 +29,9 @@ def calculators() -> list[pathlib.Path]:
     files = [*calcpath.glob("*.yml")]
     return files
 
+optional_files_to_get_back = ['molecule_0.spf', 'molecule_0.pdb', 'deposit_init.sh']
+
+
 @pytest.mark.parametrize("molecule, calculator", itertools.product(molecules(), calculators()))
 def test_calculators(molecule: pathlib.Path, calculator: pathlib.Path, image_name: str) -> None:
     output_directory = pathlib.Path(__file__).parent / "test_outputs" / calculator.name / molecule.name
@@ -40,6 +43,16 @@ def test_calculators(molecule: pathlib.Path, calculator: pathlib.Path, image_nam
         logfile = pathlib.Path(tmpdir) / "log.txt"
         assert logfile.is_file(), "Did not find log.txt"
         shutil.copy(logfile, output_directory / "log.txt")
+
+        if optional_files_to_get_back:
+            print("Trying to copy additional files . . .")
+            for filename in optional_files_to_get_back:
+                file_path = pathlib.Path(tmpdir) / filename
+                try:
+                    shutil.copy(file_path, output_directory / filename)
+                    print("Trying to copy additional files . . .")
+                except FileNotFoundError:
+                    print(f"File {filename} not found")
 
         resultfile = pathlib.Path(tmpdir)/"result.yml"
         assert resultfile.is_file(), "Did not find result.yml"
