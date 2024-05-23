@@ -10,7 +10,7 @@ import yaml
 
 
 def docker_run_helper(image_name: str, workdir: pathlib.Path, molecule: pathlib.Path, calculator: pathlib.Path):
-    run_command = ["docker","run","--rm", "-v", f"{workdir}:/tmp", "-v",  f"{molecule}:/tmp/molecule.yml","-v", f"{calculator}:/tmp/calculator.yml","--workdir","/tmp", image_name]
+    run_command = ["docker","run","--rm", "-v", "/dev/shm:/dev/shm", "-v", f"{workdir}:/tmp", "-v",  f"{molecule}:/tmp/molecule.yml","-v", f"{calculator}:/tmp/calculator.yml","--workdir","/tmp", image_name]
     output = subprocess.check_output(run_command,encoding="utf8")
 
 @pytest.fixture
