@@ -3,13 +3,13 @@ DFT_options:
   Engine: PySCF
   Functional: BP86
   memory_per_thread: 4000
-DH_scan_steps: 180
+DH_scan_steps: 4
 Molecule_pdb: molecule.pdb
 Molecule_spf: molecule.spf
 Show advanced: false
 forcefield_optimization:
   deposit restartfile: restartfile.zip
-  no_samples: 1000
+  no_samples: 4
   optimize: true
   train_data_file: input_train_data.npz
   train_set_generation: vacuum_wide
