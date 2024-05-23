@@ -8,6 +8,7 @@ import shlex
 import structlog
 import logging
 import os
+import uuid
 
 # Configure structlog
 logging.basicConfig(
@@ -42,11 +43,115 @@ def list_directory_contents(path='.'):
     try:
         contents = list(pathlib.Path(path).iterdir())
         for item in contents:
-            logger.info(f"Found item: {item.name}", item_type="directory" if item.is_dir() else "file", size=item.stat().st_size)
+            logger.info(f"Found item: {item.name}", item_type="directory" if item.is_dir() else "file",
+                        size=item.stat().st_size)
         return contents
     except Exception as e:
         logger.error("Failed to list directory contents", error=str(e))
         raise
+
+
+def check_ssh_installed():
+    """
+    Check if ssh is installed and available in the system's PATH.
+    """
+    try:
+        result = subprocess.run(['which', 'ssh'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode == 0:
+            logger.info("ssh is installed and available in PATH.")
+            return True
+        else:
+            logger.error("ssh is not available in PATH.")
+            return False
+    except subprocess.CalledProcessError:
+        logger.error("ssh is not installed or not available in PATH.")
+        return False
+
+
+def run_command(command, use_shell=False, output_file=None):
+    """
+    Run a shell command and log its output using structlog. Optionally redirect stdout to an output file.
+    """
+    try:
+        logger.info(f"Running command: {command}")
+        if use_shell:
+            if output_file:
+                with open(output_file, 'w') as out_file:
+                    result = subprocess.run(command, check=True, stdout=out_file, stderr=subprocess.PIPE, shell=True,
+                                            encoding='utf8')
+                    logger.info(f"Command stdout written to {output_file}")
+                    if result.stderr:
+                        logger.error(f"Command stderr: {result.stderr}")
+            else:
+                result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True,
+                                        encoding='utf8')
+                if result.stdout:
+                    logger.info(f"Command stdout: {result.stdout}")
+                if result.stderr:
+                    logger.error(f"Command stderr: {result.stderr}")
+        else:
+            command_list = shlex.split(command) if isinstance(command, str) else command
+            if output_file:
+                with open(output_file, 'w') as out_file:
+                    result = subprocess.run(command_list, check=True, stdout=out_file, stderr=subprocess.PIPE,
+                                            encoding='utf8')
+                    logger.info(f"Command stdout written to {output_file}")
+                    if result.stderr:
+                        logger.error(f"Command stderr: {result.stderr}")
+            else:
+                result = subprocess.run(command_list, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        encoding='utf8')
+                if result.stdout:
+                    logger.info(f"Command stdout: {result.stdout}")
+                if result.stderr:
+                    logger.error(f"Command stderr: {result.stderr}")
+    except subprocess.CalledProcessError as e:
+        logger.error("Command failed", command=command, returncode=e.returncode, output=e.output, stderr=e.stderr)
+        raise
+    except FileNotFoundError as e:
+        logger.error(f"Command not found: {e.filename}", error=str(e))
+        raise
+
+
+def run_shell_script(script_path, env_vars):
+    """
+    Run a shell script and log its output using structlog.
+    """
+    try:
+        logger.info(f"Running shell script: {script_path}")
+        result = subprocess.run(
+            f'bash {script_path}', 
+            shell=True, 
+            check=True, 
+            stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE, 
+            text=True, 
+            env=env_vars
+        )
+        logger.info(f"Script output:\n{result.stdout}")
+        if result.stderr:
+            logger.error(f"Script error output:\n{result.stderr}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Script failed with return code {e.returncode}", error=str(e))
+        raise
+
+
+# List all installed executables in the environment
+try:
+    result = subprocess.run(['micromamba', 'list'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            encoding='utf8')
+    installed_packages = result.stdout
+    logger.info("Installed packages:\n" + installed_packages)
+except subprocess.CalledProcessError as e:
+    logger.error("Failed to list installed packages", error=str(e))
+    raise
+
+# remove this -->
+# Ensure ssh is available
+if not check_ssh_installed():
+    logger.error("Please install ssh and ensure it is available in the system's PATH.")
+    raise SystemExit("ssh is not available. Exiting.")
+# <-- remove this
 
 
 try:
@@ -79,7 +184,6 @@ inchiKey = moldict["inchiKey"]
 mol_inchi = 'mol.inchi'
 with open(mol_inchi, 'w') as outfile:
     outfile.write(f"{inchi}\n")
-
 
 # 1. get 3D model of the molecule
 
@@ -115,9 +219,13 @@ logger.info("Active Conda environment", conda_env=env_vars.get('CONDA_DEFAULT_EN
 logger.info("Number of OpenMP threads", omp_threads=env_vars.get('OMP_NUM_THREADS', 'N/A'))
 logger.info("CPU binding policy", slurm_cpu_bind=env_vars.get('SLURM_CPU_BIND', 'N/A'))
 
+# Print environment variables for debugging
+logger.info("NMMPIARGS", NMMPIARGS=os.environ.get('NMMPIARGS'))
+logger.info("ENVCOMMAND", ENVCOMMAND=os.environ.get('ENVCOMMAND'))
+logger.info("HOSTFILE", HOSTFILE=os.environ.get('HOSTFILE'))
 
 # 2. Parametrizer.
-# Define the source and destination paths
+# fetch parametrizer settings into the currrent directory
 source_path = '/opt/tmpl/parametrizer/parametrizer_settings.yml'
 destination_path = './parametrizer_settings.yml'  # Current directory
 
@@ -168,36 +276,131 @@ for required_file in required_files_after_parametrizer:
 # 3. DHP.
 logger.info("DHP starts . . .")
 
-###### -->
-# we calculate homo and lumo
-#command = "xtb xtbopt.xyz"
-#output = subprocess.check_output(shlex.split(command), encoding="utf8", text=True).split("\n")
+# 3.0. Prepare DHP or anything using HOSTFILE
+numcpus = int(os.environ.get('NUMCPUS', os.cpu_count()))
+hostfile_path = os.environ.get('HOSTFILE', 'generated_hostfile.txt')  # it might be set from above.
+os.environ['HOSTFILE'] = hostfile_path
 
-#with open("out.log",'wt') as outfile:
-#    outfile.write("\n".join(output))
-###### <--
+# Open the HOSTFILE for appending
+with open(hostfile_path, 'a') as hostfile:
+    for i in range(numcpus):
+        hostfile.write("localhost\n")
 
-resultdict =  { inchiKey: {} }  # dummy output
+# Run add_dihedral_angles.sh
 
-###### -->
-#for line in output:
-#    for tag in provides:
-#        if f"({tag})" in line: # xtb logs homo lumo out as (HOMO) and (LUMO)
-#            splitline = line.split()
-#            value = float(splitline[-2])
-#            resultdict[inchiKey][tag] = value
-###### <--
+# Ensure DEPTOOLS is set in the environment
+dep_tools = os.environ.get('DEPTOOLS')
+if not dep_tools:
+    logger.error("DEPTOOLS environment variable is not set")
+    raise EnvironmentError("DEPTOOLS environment variable is not set")
+
+# Add dihedral angles
+command = f"{dep_tools}/add_dihedral_angles.sh {output_molecule_mol2_from_parametrizer} {molecule_spf_from_parametrizer}"
+run_command(command)
+
+# Zip files
+command = f"zip report.zip {output_molecule_mol2_from_parametrizer} molecule.pdb {molecule_spf_from_parametrizer}"
+run_command(command)
+
+# Append mol_data.yml to output_dict.yml ### artem: why do we need this at all?
+#command = "cat mol_data.yml >> output_dict.yml"
+#run_command(command)
+
+# Convert mol2 to svg
+# Convert mol2 to svg
+command = "obabel -imol2 output_molecule.mol2 -osvg"
+run_command(command, output_file="output_molecule.svg")
+
+source_path = '/opt/tmpl/dhp/dhp_settings.yml'
+destination_path = './dhp_settings.yml'  # Current directory
+
+# Copy the parametrizer_settings.yml
+try:
+    shutil.copy(source_path, destination_path)
+    print(f"Copied {source_path} to {destination_path}")
+except Exception as e:
+    logger.error("Failed to copy the file", error=str(e))
+    raise
+
+# check before we run DHP, if we have necessary files.from
+# todo: ensure expected files exist
+
+logger.info("Listing directory contents before we run DHP")
+list_directory_contents()
+
+# ensure that the necessary files exist and their files are as expected
+output_molecule_pdb_after_add_dyhedrals = "molecule.pdb"
+output_molecule_spf_after_add_dyhedrals = "molecule.spf"
+dhp_settings = "dhp_settings.yml"
+
+required_files_after_parametrizer = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals,
+                                     dhp_settings]
+for required_file in required_files_after_parametrizer:
+    assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
+
+# which is DHP?
+try:
+    result = subprocess.run(['which', 'DihedralParametrizer'], check=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, encoding='utf8')
+    dihedral_parametrizer_path = result.stdout.strip()
+    logger.info(f"Found DihedralParametrizer at {dihedral_parametrizer_path}")
+except subprocess.CalledProcessError as e:
+    logger.error("Failed to find DihedralParametrizer", error=str(e))
+    raise
+
+# Run DihedralParametrizer with MPI
+#command = "mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py `which DihedralParametrizer` dhp_settings.yml >> DHP_mainout.txt 2> dhp_mpi_stderr"
+#command = "mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py `which DihedralParametrizer` dhp_settings.yml"
+command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {dihedral_parametrizer_path} ./dhp_settings.yml"
+# command = (f"mpirun --bind-to none --mca plm isolated {os.environ.get('NMMPIARGS')} {os.environ.get('ENVCOMMAND')} "
+#                f"--hostfile {os.environ.get('HOSTFILE')} --mca btl self,vader,tcp python -m mpi4py `which DihedralParametrizer` dhp_settings.yml")
+run_command(command, use_shell=True)
+
+# Create symbolic links
+os.symlink('molecule.pdb', 'molecule_0.pdb')
+os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
+
+# 4. Deposit.
+logger.info("Deposit starts . . .")
+
+# 4.0. Copy deposit_init.sh to the current dir.
+
+source_path = '/opt/tmpl/deposit/deposit_init.sh'  # todo: 2 molecules if testing . . .
+destination_path = './deposit_init.sh'  # Current directory
+
+# Copy the parametrizer_settings.yml
+try:
+    shutil.copy(source_path, destination_path)
+    print(f"Copied {source_path} to {destination_path}")
+except Exception as e:
+    logger.error("Failed to copy the file", error=str(e))
+    raise
+
+
+# Generate a UUID in Python
+generated_uuid = str(uuid.uuid4())
+logger.info(f"Generated UUID: {generated_uuid}")
+
+# Set necessary environment variables
+env_vars = os.environ.copy()
+env_vars['GENERATED_UUID'] = generated_uuid
+
+script_path = 'deposit_init.sh'  # the way deposit is run is different
+#run_shell_script(script_path, env_vars)
+
+
+# Finalizing -->
+resultdict = {inchiKey: {}}  # dummy output
 
 # before we extract and write the results, we want to show what we have in the working dir after simulations are complete
 
 logger.info("Listing directory contents at the end")
 list_directory_contents()
 
-
 #!--> dummy output
 for tag in provides:
     resultdict[inchiKey][tag] = 0
 #!<--
 
-with open("result.yml",'wt') as outfile:
+with open("result.yml", 'wt') as outfile:
     yaml.dump(resultdict, outfile)
