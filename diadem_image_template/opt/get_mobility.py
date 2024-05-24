@@ -135,7 +135,6 @@ def run_shell_script(script_path, env_vars):
         logger.error(f"Script failed with return code {e.returncode}", error=str(e))
         raise
 
-
 # List all installed executables in the environment
 try:
     result = subprocess.run(['micromamba', 'list'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -357,8 +356,11 @@ command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --
 run_command(command, use_shell=True)
 
 # Create symbolic links
-os.symlink('molecule.pdb', 'molecule_0.pdb')
-os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
+#os.symlink('molecule.pdb', 'molecule_0.pdb')
+#os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
+
+shutil.copy('molecule.pdb', 'molecule_0.pdb')
+shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')
 
 # 4. Deposit.
 logger.info("Deposit starts . . .")
@@ -386,7 +388,7 @@ env_vars = os.environ.copy()
 env_vars['GENERATED_UUID'] = generated_uuid
 
 script_path = 'deposit_init.sh'  # the way deposit is run is different
-#run_shell_script(script_path, env_vars)
+run_shell_script(script_path, env_vars)
 
 
 # Finalizing -->
