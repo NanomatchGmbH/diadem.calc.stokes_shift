@@ -111,7 +111,7 @@ System:
     default_molstates: 0;1
     engine: PySCF core
     engine_by_iter: {}
-    number: 2
+    number: 10
     type: number
   IdenticalMolecules:
     crystal_centers: []
@@ -130,7 +130,7 @@ System:
       roots: 0
   Shells:
     '0':
-      cutoff: 15.0
+      cutoff: 5.0
       engine: PySCF env
       engine_by_iter: {}
       type: scf
@@ -140,7 +140,7 @@ System:
       engine_by_iter: {}
       type: static
     '2':
-      cutoff: 25.0
+      cutoff: 10.0
       engine: DFTB+ 1
       engine_by_iter: {}
       type: scf
