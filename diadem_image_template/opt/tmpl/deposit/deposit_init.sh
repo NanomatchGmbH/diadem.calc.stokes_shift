@@ -60,15 +60,16 @@ zip restartfile.zip deposited_*.pdb.gz static_parameters.dpcf.gz static_paramete
 
 rm deposited_*.pdb.gz deposited_*.cml static_parameters.dpcf.gz grid.vdw.gz grid.es.gz neighbourgrid.vdw.gz
 
-if [ -d $SCRATCH ] || [ -d $HOME ]
-then
-if [ -d $WORKING_DIR ]
-then
-    rsync -av $WORKING_DIR/* $DATA_DIR/ --exclude "*.stderr" --exclude "*.stdout" --exclude "stdout" --exclude "stderr"
-    cd $DATA_DIR
-    rm -r $WORKING_DIR
+if [ -d $SCRATCH ] || [ -d $HOME ]; then
+    if [ -d $WORKING_DIR ]; then
+        mkdir -p $DATA_DIR
+        cp -r $WORKING_DIR/* $DATA_DIR/
+        find $DATA_DIR -type f \( -name "*.stderr" -o -name "*.stdout" -o -name "stdout" -o -name "stderr" \) -exec rm -f {} +
+        cd $DATA_DIR
+        rm -r $WORKING_DIR
+    fi
 fi
-fi
+
 
 QuantumPatchAnalysis > DensityAnalysisInit.out
 QuantumPatchAnalysis Analysis.Density.enabled=True Analysis.RDF.enabled=True #> DensityAnalysis.out
