@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import pathlib
 import shutil
+import zipfile
 
 import yaml
 import subprocess
@@ -422,19 +423,71 @@ os.environ['SCRATCH'] = scratch_dir
 print(f"SCRATCH is set to: {os.environ['SCRATCH']}")
 
 # 4.1. RUN QP
+
+# the only necessary input for QP: structure or structurePBC is in the current folder.
+
 # which is QP?
 try:
     result = subprocess.run(['which', 'QuantumPatch'], check=True, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, encoding='utf8')
     qp_path = result.stdout.strip()
-    logger.info(f"Found DihedralParametrizer at {qp_path}")
+    logger.info(f"Found QuantumPatch at {qp_path}")
 except subprocess.CalledProcessError as e:
-    logger.error("Failed to find DihedralParametrizer", error=str(e))
+    logger.error("Failed to find QuantumPatch", error=str(e))
     raise
 
 
 command = f'mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {qp_path}'
 run_command(command, use_shell=True)  # use or not use?
+
+# 4.2. Prepare input for LF
+
+# Define the directory to be zipped and the name of the zip file
+directory_to_zip = "Analysis"
+zip_file_name = "QP_output_0.zip"
+
+# Create a zip from Analysis of QP.
+with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    # Walk through the directory
+    for root, dirs, files in os.walk(directory_to_zip):
+        for file in files:
+            # Create the complete filepath of the file in the zip
+            file_path = os.path.join(root, file)
+            # Add the file to the zip file, preserving the directory structure
+            zipf.write(file_path, os.path.relpath(file_path, directory_to_zip))
+
+print(f"Directory '{directory_to_zip}' zipped into '{zip_file_name}' successfully. This will be the LF input.")
+
+
+
+
+# 5. Lightforge
+
+
+source_path = '/opt/tmpl/lightforge/settings'
+destination_path = './settings'
+
+# Copy settings of LF to the current dir
+try:
+    shutil.copy(source_path, destination_path)
+    print(f"Copied {source_path} to {destination_path}")
+except Exception as e:
+    logger.error("Failed to copy the file", error=str(e))
+    raise
+
+
+try:
+    result = subprocess.run(['which', 'lightforge'], check=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, encoding='utf8')
+    lightforge_path = result.stdout.strip()
+    logger.info(f"Found lightforge at {lightforge_path}")
+except subprocess.CalledProcessError as e:
+    logger.error("Failed to find lightforge", error=str(e))
+    raise
+
+command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n 4 --mca btl self,vader,tcp python -m mpi4py {lightforge_path} -s settings'
+run_command(command, use_shell=True)
+
 
 
 # Finalizing -->
