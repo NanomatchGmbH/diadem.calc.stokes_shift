@@ -17,8 +17,6 @@ export NM_LICENSE_SERVER=123.123.123.123
 
 python /opt/get_mobility.py
 
-bash deposit_init.sh >> log.txt 2>&1
-
 
 # Make sure that after this script finishes a result.yml exists.
 # The workdir_bundle.tar.gz will also be staged out for debugging purposes, if you create it. 
