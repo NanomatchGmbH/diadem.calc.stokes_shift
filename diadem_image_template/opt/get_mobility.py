@@ -9,6 +9,7 @@ import structlog
 import logging
 import os
 import uuid
+import tempfile
 
 # Configure structlog
 logging.basicConfig(
@@ -370,7 +371,7 @@ logger.info("Deposit starts . . .")
 source_path = '/opt/tmpl/deposit/deposit_init.sh'  # todo: 2 molecules if testing . . .
 destination_path = './deposit_init.sh'  # Current directory
 
-# Copy the parametrizer_settings.yml
+# Copy deposit_init.sh
 try:
     shutil.copy(source_path, destination_path)
     print(f"Copied {source_path} to {destination_path}")
@@ -389,6 +390,51 @@ env_vars['GENERATED_UUID'] = generated_uuid
 
 script_path = 'deposit_init.sh'  # the way deposit is run is different
 run_shell_script(script_path, env_vars)
+
+# 5. QP.
+logger.info("QP starts . . .")
+
+# 4.0. Copy deposit_init.sh to the current dir.
+
+source_path = '/opt/tmpl/qp/settings_ng.yml'  # todo: 2 molecules if testing . . .
+destination_path = './settings_ng.yml'  # Current directory
+
+# Copy settings_ng.yml of QP
+try:
+    shutil.copy(source_path, destination_path)
+    print(f"Copied {source_path} to {destination_path}")
+except Exception as e:
+    logger.error("Failed to copy the file", error=str(e))
+    raise
+
+
+# Generate a random directory inside the current directory
+current_dir = os.getcwd()
+scratch_dir = os.path.join(current_dir, "scratch_" + next(tempfile._get_candidate_names()))
+
+# Ensure the directory exists
+os.makedirs(scratch_dir, exist_ok=True)
+
+# Set the SCRATCH environment variable
+os.environ['SCRATCH'] = scratch_dir
+
+# Print the SCRATCH directory to verify
+print(f"SCRATCH is set to: {os.environ['SCRATCH']}")
+
+# 4.1. RUN QP
+# which is QP?
+try:
+    result = subprocess.run(['which', 'QuantumPatch'], check=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, encoding='utf8')
+    qp_path = result.stdout.strip()
+    logger.info(f"Found DihedralParametrizer at {qp_path}")
+except subprocess.CalledProcessError as e:
+    logger.error("Failed to find DihedralParametrizer", error=str(e))
+    raise
+
+
+command = f'mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {qp_path}'
+run_command(command, use_shell=True)  # use or not use?
 
 
 # Finalizing -->
