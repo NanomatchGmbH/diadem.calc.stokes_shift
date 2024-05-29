@@ -34,14 +34,12 @@ def docker_run_helper(image_name: str, workdir: pathlib.Path, molecule: pathlib.
 
 def get_image_name() -> str:
     image_name = subprocess.check_output(["git", "describe"], encoding="utf8").replace('/v', ':')
-    print(image_name.strip())
     return image_name.strip()
 
 
 def get_molecules(input_dir: pathlib.Path) -> list[pathlib.Path]:
     molpath = input_dir / "molecules"
     files = [*molpath.glob("*.yml")]
-    print(files)
     return files
 
 
@@ -97,21 +95,12 @@ def run_calculations(molecule: pathlib.Path, calculator: pathlib.Path, image_nam
 
 
 def main(args):
-    print("here")
     image_name = get_image_name()
     molecules = get_molecules(args.input_dir)
     calculators = get_calculators(args.calculator_dir)
-    
-    print("here here")
-    
-    print(molecules)
-    print(calculators)
 
 
     for molecule, calculator in itertools.product(molecules, calculators):
-        print("here here here")
-        print(molecule)
-        print(calculator)
         logging.info(f"Running calculations for molecule: {molecule} with calculator: {calculator}")
         run_calculations(molecule, calculator, image_name, args.output_dir)
 
