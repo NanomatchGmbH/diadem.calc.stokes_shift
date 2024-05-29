@@ -11,6 +11,10 @@ import logging
 import os
 import uuid
 import tempfile
+from utils.change_dictionary import copy_with_changes  # todo: rename
+
+
+opt_tmpl = "/opt/tmpl"
 
 # Configure structlog
 logging.basicConfig(
@@ -173,6 +177,7 @@ except Exception as e:
 
 # The engine, which was instantiated needs to provide "provides" (e.g HOMO and LUMO)
 provides = calcdict["provides"]
+changes = calcdict['specification']
 
 # This is a free form dictionary. For the example, we just provide numsteps
 #### steps = calcdict["specification"]["numsteps"]
@@ -227,19 +232,24 @@ logger.info("HOSTFILE", HOSTFILE=os.environ.get('HOSTFILE'))
 
 # 2. Parametrizer.
 # fetch parametrizer settings into the currrent directory
-source_path = '/opt/tmpl/parametrizer/parametrizer_settings.yml'
+# source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
+source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
 destination_path = './parametrizer_settings.yml'  # Current directory
 
-# Copy the parametrizer_settings.yml 
-try:
-    shutil.copy(source_path, destination_path)
-    print(f"Copied {source_path} to {destination_path}")
-except Exception as e:
-    logger.error("Failed to copy the file", error=str(e))
-    raise
+# Copy the parametrizer_settings.yml (old)
+#try:
+#    shutil.copy(source_path, destination_path)
+#    print(f"Copied {source_path} to {destination_path}")
+#except Exception as e:
+#    logger.error("Failed to copy the file", error=str(e))
+#    raise
+
 
 # Define the command
 command = "QPParametrizer"
+
+# Copy "parametrizer_settings.yml" changing them using the calculator configurations
+copy_with_changes(source_path, changes[command], destination_path)
 
 try:
     process = subprocess.Popen(
@@ -274,10 +284,13 @@ required_files_after_parametrizer = [output_molecule_mol2_from_parametrizer, mol
 for required_file in required_files_after_parametrizer:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
 
+list_directory_contents()
+
 # 3. DHP.
 logger.info("DHP starts . . .")
 
 # 3.0. Prepare DHP or anything using HOSTFILE
+# todo: make a function write hostile.
 numcpus = int(os.environ.get('NUMCPUS', os.cpu_count()))
 hostfile_path = os.environ.get('HOSTFILE', 'generated_hostfile.txt')  # it might be set from above.
 os.environ['HOSTFILE'] = hostfile_path
@@ -286,6 +299,7 @@ os.environ['HOSTFILE'] = hostfile_path
 with open(hostfile_path, 'a') as hostfile:
     for i in range(numcpus):
         hostfile.write("localhost\n")
+# todo: end of todo
 
 # Run add_dihedral_angles.sh
 
@@ -308,23 +322,19 @@ run_command(command)
 #run_command(command)
 
 # Convert mol2 to svg
-# Convert mol2 to svg
 command = "obabel -imol2 output_molecule.mol2 -osvg"
 run_command(command, output_file="output_molecule.svg")
 
-source_path = '/opt/tmpl/dhp/dhp_settings.yml'
+source_path = f'{opt_tmpl}/DihedralParametrizer/dhp_settings.yml'
 destination_path = './dhp_settings.yml'  # Current directory
 
-# Copy the parametrizer_settings.yml
+# Copy the dhp_settings.yml
 try:
     shutil.copy(source_path, destination_path)
     print(f"Copied {source_path} to {destination_path}")
 except Exception as e:
     logger.error("Failed to copy the file", error=str(e))
     raise
-
-# check before we run DHP, if we have necessary files.from
-# todo: ensure expected files exist
 
 logger.info("Listing directory contents before we run DHP")
 list_directory_contents()
@@ -340,6 +350,7 @@ for required_file in required_files_after_parametrizer:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
 
 # which is DHP?
+# todo: run with command run.
 try:
     result = subprocess.run(['which', 'DihedralParametrizer'], check=True, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, encoding='utf8')
@@ -364,12 +375,16 @@ run_command(command, use_shell=True)
 shutil.copy('molecule.pdb', 'molecule_0.pdb')
 shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')
 
+
+list_directory_contents()
+
+
 # 4. Deposit.
 logger.info("Deposit starts . . .")
 
 # 4.0. Copy deposit_init.sh to the current dir.
 
-source_path = '/opt/tmpl/deposit/deposit_init.sh'  # todo: 2 molecules if testing . . .
+source_path = f'{opt_tmpl}/Deposit/deposit_init.sh'  # todo: 2 molecules if testing . . .
 destination_path = './deposit_init.sh'  # Current directory
 
 # Copy deposit_init.sh
@@ -397,7 +412,7 @@ logger.info("QP starts . . .")
 
 # 4.0. Copy deposit_init.sh to the current dir.
 
-source_path = '/opt/tmpl/qp/settings_ng.yml'  # todo: 2 molecules if testing . . .
+source_path = f'{opt_tmpl}/qp/settings_ng.yml'  # todo: 2 molecules if testing . . .
 destination_path = './settings_ng.yml'  # Current directory
 
 # Copy settings_ng.yml of QP
@@ -458,13 +473,9 @@ with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
 
 print(f"Directory '{directory_to_zip}' zipped into '{zip_file_name}' successfully. This will be the LF input.")
 
-
-
-
 # 5. Lightforge
 
-
-source_path = '/opt/tmpl/lightforge/settings'
+source_path = f'{opt_tmpl}/lightforge/settings'
 destination_path = './settings'
 
 # Copy settings of LF to the current dir
