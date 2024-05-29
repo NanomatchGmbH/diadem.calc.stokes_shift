@@ -1,5 +1,5 @@
 DFT Engine:
-  Engine: PySCF
+  Engine: Psi4
   Memory (MB): 16000.0
   Threads: '4'
   DFTB+ Settings:
