@@ -16,6 +16,7 @@ import tempfile
 from utils.change_dictionary import copy_with_changes  # todo: rename
 from utils.general import load_yaml, save_yaml
 import psutil
+from contextlib import contextmanager
 
 debug = False
 opt_tmpl = "/opt/tmpl"
@@ -303,6 +304,39 @@ def check_required_output_files_exist(filepaths, description="file"):
             f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
 
 
+@contextmanager
+def change_directory(destination):  # todo remove
+    """
+    Context manager for changing the current working directory.
+    """
+    original_dir = pathlib.Path.cwd()
+    try:
+        os.chdir(destination)
+        yield
+    finally:
+        os.chdir(original_dir)
+
+
+class ChangeDirectory:
+    """
+    Context manager for creating and changing the current working directory to a simulations directory.
+    """
+
+    def __init__(self, dir_name):
+        self.new_path = pathlib.Path.cwd() / dir_name
+        self.original_path = pathlib.Path.cwd()
+
+    def __enter__(self):
+        self.new_path.mkdir(exist_ok=True)
+        os.chdir(self.new_path)
+        logger.info(f"Changed directory to {self.new_path}")
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        os.chdir(self.original_path)
+        logger.info(f"Returned to original directory {self.original_path}")
+
+
 if debug:
     logger.info(f"{os.getcwd()=}")
     list_installed_micromamba_packages()
@@ -347,41 +381,43 @@ inchiKey = moldict["inchiKey"]
 
 
 # 1 .PREOPTIMIZATION WITH NO NM SOFTWARE
+# Create a new directory for preoptimization
 # we generate a bad 3d structure. Plan below:
 # mol.inchi -[obabel]-> mol.xyz ->[xtb]-> xtbout.xyz -[obabel]-> input_molecule.mol2
-mol_inchi = 'mol.inchi'
-with open(mol_inchi, 'w') as outfile:
-    outfile.write(f"{inchi}\n")
 
-logger.info("Generate 3D conformer of the molecule . . .")
-initial_conformer_xyz = 'mol.xyz'
-command = f"obabel -i inchi {mol_inchi} -o xyz -O {initial_conformer_xyz} --gen3d"
-run_command(command)
-required_files = [initial_conformer_xyz]
-check_required_output_files_exist(initial_conformer_xyz)
+with ChangeDirectory("preoptimization"):
+    mol_inchi = 'mol.inchi'
+    with open(mol_inchi, 'w') as outfile:
+        outfile.write(f"{inchi}\n")
 
-# optimize using xtb from xtb, not from parametrizer.
-# we optimize the bad 3d structure [initial_conformer]
-logger.info("xtb optimization of 3D conformer of the molecule . . .")
-command = f"xtb {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
-run_command(command)
-xtb_preoptimized_xyz = 'xtbopt.xyz'
-required_files = [xtb_preoptimized_xyz]
-check_required_output_files_exist(required_files)
+    logger.info("Generate 3D conformer of the molecule . . .")
+    initial_conformer_xyz = 'mol.xyz'
+    command = f"obabel -i inchi {mol_inchi} -o xyz -O {initial_conformer_xyz} --gen3d"
+    run_command(command)
+    required_files = [initial_conformer_xyz]
+    check_required_output_files_exist(initial_conformer_xyz)
 
-logger.info("Transfer xyz to mol2 . . .")
-xtb_preoprimized_mol2 = 'input_molecule.mol2'
-command = f"obabel -i xyz {xtb_preoptimized_xyz} -o mol2 -O {xtb_preoprimized_mol2}"
-run_command(command)
-required_files = [xtb_preoprimized_mol2]
-check_required_output_files_exist(required_files)
+    # optimize using xtb from xtb, not from parametrizer.
+    # we optimize the bad 3d structure [initial_conformer]
+    logger.info("xtb optimization of 3D conformer of the molecule . . .")
+    command = f"xtb {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
+    run_command(command)
+    xtb_preoptimized_xyz = 'xtbopt.xyz'
+    required_files = [xtb_preoptimized_xyz]
+    check_required_output_files_exist(required_files)
+
+    logger.info("Transfer xyz to mol2 . . .")
+    xtb_preoprimized_mol2 = 'input_molecule.mol2'
+    command = f"obabel -i xyz {xtb_preoptimized_xyz} -o mol2 -O {xtb_preoprimized_mol2}"
+    run_command(command)
+    required_files = [xtb_preoprimized_mol2]
+    check_required_output_files_exist(required_files)
 
 logger.info(". . . Preoptimization successful!")
 
-
-
 # 2. Parametrizer.
-# below, the typical way to set up and run NM software
+
+
 executable = "QPParametrizer"  # name of the [main] entrypoint that will be run.
 command = f"{executable}"
 source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
@@ -394,11 +430,14 @@ run_command(command)
 output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
 molecule_spf_from_parametrizer = "molecule.spf"
 required_files = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer]
+
 for required_file in required_files:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
-
 if debug:
     list_directory_contents()
+sys.exit()
+
+
 
 # 3. DHP.
 logger.info("DHP starts . . .")
