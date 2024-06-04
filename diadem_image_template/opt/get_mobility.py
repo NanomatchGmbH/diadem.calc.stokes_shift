@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 import pathlib
 import shutil
 import zipfile
@@ -12,8 +13,10 @@ import os
 import uuid
 import tempfile
 from utils.change_dictionary import copy_with_changes  # todo: rename
+from utils.general import load_yaml, save_yaml
+import psutil
 
-
+debug = False
 opt_tmpl = "/opt/tmpl"
 
 # Configure structlog
@@ -55,23 +58,6 @@ def list_directory_contents(path='.'):
     except Exception as e:
         logger.error("Failed to list directory contents", error=str(e))
         raise
-
-
-def check_ssh_installed():
-    """
-    Check if ssh is installed and available in the system's PATH.
-    """
-    try:
-        result = subprocess.run(['which', 'ssh'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if result.returncode == 0:
-            logger.info("ssh is installed and available in PATH.")
-            return True
-        else:
-            logger.error("ssh is not available in PATH.")
-            return False
-    except subprocess.CalledProcessError:
-        logger.error("ssh is not installed or not available in PATH.")
-        return False
 
 
 def run_command(command, use_shell=False, output_file=None):
@@ -119,6 +105,163 @@ def run_command(command, use_shell=False, output_file=None):
         raise
 
 
+def set_env_variables_from_dict(env_vars):
+    '''
+    For deposit: helps to set the args
+    '''
+
+    def set_env(prefix, d):
+        for key, value in d.items():
+            if isinstance(value, dict):
+                set_env(f"{prefix}.{key}", value)
+            else:
+                os.environ[f"{prefix}.{key}"] = str(value)
+
+    for key, value in env_vars.items():
+        set_env(key, value)
+
+    return dict(os.environ)
+
+
+# Deposit scripts below -->
+
+def setup_working_directory():
+    current_dir = os.getcwd()
+    scratch_dir = os.environ.get('SCRATCH')
+    home_dir = os.environ.get('HOME')
+    generated_uuid = os.environ.get('GENERATED_UUID', 'default_uuid')  # Set a default UUID if not provided
+
+    if scratch_dir and os.path.isdir(scratch_dir):
+        working_dir = os.path.join(scratch_dir, os.getlogin(), generated_uuid)
+    elif home_dir and os.path.isdir(home_dir):
+        working_dir = os.path.join(home_dir, 'tmp', generated_uuid)
+    else:
+        working_dir = current_dir
+
+    os.makedirs(working_dir, exist_ok=True)
+    for item in os.listdir(current_dir):
+        s = os.path.join(current_dir, item)
+        d = os.path.join(working_dir, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, dirs_exist_ok=True)
+        else:
+            shutil.copy2(s, d)
+
+    logger.info(f"Deposit running on node {os.uname().nodename} in directory {working_dir}")
+    os.chdir(working_dir)
+    return current_dir, working_dir
+
+
+def check_and_extract_deposit_restart():
+    if os.environ.get('DO_RESTART') == 'True':
+        if os.path.isfile('restartfile.zip'):
+            with zipfile.ZipFile('restartfile.zip', 'r') as zip_ref:
+                zip_ref.testzip()
+                if zip_ref.testzip() is not None:
+                    print("Could not read restartfile. Aborting run.")
+                    exit(1)
+                print("Found Checkpoint, extracting for restart.")
+                zip_ref.extractall()
+            os.remove('restartfile.zip')
+        else:
+            print("Restart was enabled, but no checkpoint file was found. Not starting simulation.")
+            exit(5)
+
+
+def convert_structure():
+    run_command("obabel structure.cml -O structure.mol2", use_shell=True)
+
+
+def deposit_simulation():
+    command = (
+        "Deposit molecule.0.pdb=molecule_0.pdb molecule.0.spf=molecule_0.spf molecule.0.conc=1.0 "
+        "simparams.Thi=4000.0 simparams.Tlo=300.0 simparams.sa.Tacc=5.0 simparams.sa.cycles=${UC_PROCESSORS_PER_NODE} "
+        "simparams.sa.steps=${simparams.sa.steps} simparams.Nmol=${simparams.Nmol} simparams.moves.dihedralmoves=True "
+        "Box.Lx=${Box.Lx} Box.Ly=${Box.Ly} Box.Lz=${Box.Lz} Box.pbc_cutoff=10.0 simparams.PBC=${simparams.PBC} "
+        "machineparams.ncpu=${UC_PROCESSORS_PER_NODE} Box.grid_overhang=${Box.grid_overhang} "
+        "simparams.postrelaxation_steps=${simparams.postrelaxation_steps}"
+    )
+    expanded_command = os.path.expandvars(command)
+    run_command(expanded_command, use_shell=True)
+
+
+def add_periodic_copies_deposit():
+    if True:
+        run_command("$DEPTOOLS/add_periodic_copies.py 7.0", use_shell=True)
+        shutil.move("periodic_output/structurePBC.cml", ".")
+        shutil.rmtree("periodic_output/", ignore_errors=True)
+
+
+def create_deposit_restart_zip():
+    with zipfile.ZipFile('restartfile.zip', 'w') as zipf:
+        for file in ["deposited_*.pdb.gz", "static_parameters.dpcf.gz",
+                     "static_parameters.dpcf_molinfo.dat.gz", "grid.vdw.gz",
+                     "grid.es.gz", "neighbourgrid.vdw.gz"]:
+            for matched_file in glob.glob(file):
+                zipf.write(matched_file)
+                os.remove(matched_file)
+
+
+def handle_deposit_working_dir_cleanup(current_dir, working_dir):
+    data_dir = current_dir
+
+    logger.info(f"Cleaning up working directory: {working_dir}")
+
+    if working_dir != data_dir:
+        os.makedirs(data_dir, exist_ok=True)
+        for item in os.listdir(working_dir):
+            s = os.path.join(working_dir, item)
+            d = os.path.join(data_dir, item)
+            try:
+                if os.path.isdir(s):
+                    shutil.copytree(s, d, dirs_exist_ok=True)
+                else:
+                    if s != d:  # Ensure source and destination are not the same
+                        shutil.copy2(s, d)
+            except Exception as e:
+                logger.warning(f"Failed to copy {s} to {d}: {e}")
+
+        for root, dirs, files in os.walk(data_dir):
+            for file in files:
+                if file in ["*.stderr", "*.stdout", "stdout", "stderr"]:
+                    try:
+                        os.remove(os.path.join(root, file))
+                    except Exception as e:
+                        logger.warning(f"Failed to remove {os.path.join(root, file)}: {e}")
+
+        try:
+            shutil.rmtree(working_dir, ignore_errors=True)
+        except Exception as e:
+            logger.warning(f"Failed to remove working directory {working_dir}: {e}")
+
+
+def list_installed_micromamba_packages():
+    try:
+        result = subprocess.run(['micromamba', 'list'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding='utf8')
+        installed_packages = result.stdout
+        logger.info("Installed packages:\n" + installed_packages)
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to list installed packages", error=str(e))
+        raise
+
+
+def run_analysis():
+    #    run_command("QuantumPatchAnalysis", use_shell=True)
+    #    run_command("QuantumPatchAnalysis Analysis.Density.enabled=True Analysis.RDF.enabled=True", use_shell=True)
+    pass
+
+
+def append_settings():
+    with open("deposit_settings.yml", "r") as settings_file:
+        settings_data = settings_file.read()
+    with open("output_dict.yml", "a") as output_file:
+        output_file.write(settings_data)
+
+
+# <-- Deposit scripts below
+
+
 def run_shell_script(script_path, env_vars):
     """
     Run a shell script and log its output using structlog.
@@ -126,12 +269,12 @@ def run_shell_script(script_path, env_vars):
     try:
         logger.info(f"Running shell script: {script_path}")
         result = subprocess.run(
-            f'bash {script_path}', 
-            shell=True, 
-            check=True, 
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE, 
-            text=True, 
+            f'bash {script_path}',
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
             env=env_vars
         )
         logger.info(f"Script output:\n{result.stdout}")
@@ -141,22 +284,21 @@ def run_shell_script(script_path, env_vars):
         logger.error(f"Script failed with return code {e.returncode}", error=str(e))
         raise
 
-# List all installed executables in the environment
-try:
-    result = subprocess.run(['micromamba', 'list'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            encoding='utf8')
-    installed_packages = result.stdout
-    logger.info("Installed packages:\n" + installed_packages)
-except subprocess.CalledProcessError as e:
-    logger.error("Failed to list installed packages", error=str(e))
-    raise
 
-# remove this -->
-# Ensure ssh is available
-if not check_ssh_installed():
-    logger.error("Please install ssh and ensure it is available in the system's PATH.")
-    raise SystemExit("ssh is not available. Exiting.")
-# <-- remove this
+if debug:
+    logger.info(f"{os.getcwd()=}")
+    list_installed_micromamba_packages()
+    env_vars = dict(os.environ)
+    logger.info("Environment variables at start", environment=env_vars)
+    # Adding context for some critical environment variables
+    logger.info("Active Conda environment", conda_env=env_vars.get('CONDA_DEFAULT_ENV', 'N/A'))
+    logger.info("Number of OpenMP threads", omp_threads=env_vars.get('OMP_NUM_THREADS', 'N/A'))
+    logger.info("CPU binding policy", slurm_cpu_bind=env_vars.get('SLURM_CPU_BIND', 'N/A'))
+
+    # Print environment variables for debugging
+    logger.info("NMMPIARGS", NMMPIARGS=os.environ.get('NMMPIARGS'))
+    logger.info("ENVCOMMAND", ENVCOMMAND=os.environ.get('ENVCOMMAND'))
+    logger.info("HOSTFILE", HOSTFILE=os.environ.get('HOSTFILE'))
 
 
 try:
@@ -175,40 +317,34 @@ except Exception as e:
     logger.error("Failed to load calculator.yml", error=str(e))
     raise
 
+
 # The engine, which was instantiated needs to provide "provides" (e.g HOMO and LUMO)
 provides = calcdict["provides"]
 changes = calcdict['specification']
-
-# This is a free form dictionary. For the example, we just provide numsteps
-#### steps = calcdict["specification"]["numsteps"]
 
 #we read smiles and molid
 inchi = moldict["inchi"]
 inchiKey = moldict["inchiKey"]
 
-# we generate a bad 3d structure
+# 0 .PREOPTIMIZATION WITH NO NM SOFTWARE
+# we generate a bad 3d structure. Plan below:
+# mol.inchi -[obabel]-> mol.xyz -> []
 mol_inchi = 'mol.inchi'
 with open(mol_inchi, 'w') as outfile:
     outfile.write(f"{inchi}\n")
-
-# 1. get 3D model of the molecule
-
 logger.info("Generate 3D conformer of the molecule . . .")
-
 initial_conformer_xyz = 'mol.xyz'
 command = f"obabel -i inchi {mol_inchi} -o xyz -O {initial_conformer_xyz} --gen3d"
 subprocess.check_output(shlex.split(command))
 
-#1.opt. optimizw using xtb from xtb, not from parametrizer.
+# 1.opt. optimize using xtb from xtb, not from parametrizer.
 # we optimize the bad 3d structure
-command = "xtb mol.xyz --opt"
+command = "xtb mol.xyz --opt"  # outputs xtbout.xyz
 output = subprocess.check_output(shlex.split(command), encoding="utf8", text=True).split("\n")
 
-logger.info("Transfer xyz to mol2 . . .")
-
-#1.end: transform to mol2
-
+# 1.end: transform to mol2
 # Construct the Open Babel command to convert from XYZ to mol2 format
+logger.info("Transfer xyz to mol2 . . .")
 input_xyz = 'xtbopt.xyz'
 output_mol2 = 'input_molecule.mol2'
 command = f"obabel -i xyz {input_xyz} -o mol2 -O {output_mol2}"
@@ -217,22 +353,10 @@ subprocess.check_output(shlex.split(command))
 input_molecule_for_parametrizer = pathlib.Path.cwd() / output_mol2
 assert input_molecule_for_parametrizer.is_file(), f"Required file {input_molecule_for_parametrizer} does not exist"
 
-env_vars = dict(os.environ)
-logger.info("Environment variables at start", environment=env_vars)
 
-# Adding context for some critical environment variables
-logger.info("Active Conda environment", conda_env=env_vars.get('CONDA_DEFAULT_ENV', 'N/A'))
-logger.info("Number of OpenMP threads", omp_threads=env_vars.get('OMP_NUM_THREADS', 'N/A'))
-logger.info("CPU binding policy", slurm_cpu_bind=env_vars.get('SLURM_CPU_BIND', 'N/A'))
-
-# Print environment variables for debugging
-logger.info("NMMPIARGS", NMMPIARGS=os.environ.get('NMMPIARGS'))
-logger.info("ENVCOMMAND", ENVCOMMAND=os.environ.get('ENVCOMMAND'))
-logger.info("HOSTFILE", HOSTFILE=os.environ.get('HOSTFILE'))
 
 # 2. Parametrizer.
 # fetch parametrizer settings into the currrent directory
-# source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
 source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
 destination_path = './parametrizer_settings.yml'  # Current directory
 
@@ -251,31 +375,11 @@ command = "QPParametrizer"
 # Copy "parametrizer_settings.yml" changing them using the calculator configurations
 copy_with_changes(source_path, changes[command], destination_path)
 
-try:
-    process = subprocess.Popen(
-        shlex.split(command),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        encoding="utf8",
-        text=True,
-        env=os.environ
-    )
-    stdout, stderr = process.communicate()
+if debug:  # check if the template was changed according to the calculator
+    source_dict, destination_dict = load_yaml(source_path), load_yaml(destination_path)
+    logger.info("QPP settings template and actually used", extra={'before': source_dict, 'after': destination_dict})
 
-    # Log stdout and stderr
-    logger.info("Command stdout", output=stdout)
-    logger.error("Command stderr", error=stderr)
-
-    if process.returncode != 0:
-        raise subprocess.CalledProcessError(process.returncode, command, output=stdout, stderr=stderr)
-
-    print("Command output:", stdout)
-except subprocess.CalledProcessError as e:
-    logger.error("Failed to run QPParametrizer", error=str(e), output=e.output, stderr=e.stderr)
-    raise
-except Exception as e:
-    logger.error("An error occurred", error=str(e))
-    raise
+run_command(command)
 
 # check after Parametrizer:
 output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
@@ -284,15 +388,20 @@ required_files_after_parametrizer = [output_molecule_mol2_from_parametrizer, mol
 for required_file in required_files_after_parametrizer:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
 
-list_directory_contents()
+if debug:
+    list_directory_contents()
 
 # 3. DHP.
 logger.info("DHP starts . . .")
 
 # 3.0. Prepare DHP or anything using HOSTFILE
 # todo: make a function write hostile.
-numcpus = int(os.environ.get('NUMCPUS', os.cpu_count()))
-hostfile_path = os.environ.get('HOSTFILE', 'generated_hostfile.txt')  # it might be set from above.
+
+#numcpus = psutil.cpu_count()
+
+numcpus = 30  # todo remove
+
+hostfile_path = os.environ.get('HOSTFILE', 'generated_hostfile.txt')  # it might be set from above.  # todo remove?
 os.environ['HOSTFILE'] = hostfile_path
 
 # Open the HOSTFILE for appending
@@ -319,7 +428,6 @@ run_command(command)
 
 # Append mol_data.yml to output_dict.yml ### artem: why do we need this at all?
 #command = "cat mol_data.yml >> output_dict.yml"
-#run_command(command)
 
 # Convert mol2 to svg
 command = "obabel -imol2 output_molecule.mol2 -osvg"
@@ -328,16 +436,13 @@ run_command(command, output_file="output_molecule.svg")
 source_path = f'{opt_tmpl}/DihedralParametrizer/dhp_settings.yml'
 destination_path = './dhp_settings.yml'  # Current directory
 
-# Copy the dhp_settings.yml
-try:
-    shutil.copy(source_path, destination_path)
-    print(f"Copied {source_path} to {destination_path}")
-except Exception as e:
-    logger.error("Failed to copy the file", error=str(e))
-    raise
+copy_with_changes(source_path, changes["DihedralParametrizer"], destination_path)
 
-logger.info("Listing directory contents before we run DHP")
-list_directory_contents()
+if debug:  # check if the template was changed according to the calculator
+    source_dict, destination_dict = load_yaml(source_path), load_yaml(destination_path)
+    logger.info("DHP settings template and actually used", extra={'before': source_dict, 'after': destination_dict})
+
+# list_directory_contents()
 
 # ensure that the necessary files exist and their files are as expected
 output_molecule_pdb_after_add_dyhedrals = "molecule.pdb"
@@ -350,7 +455,6 @@ for required_file in required_files_after_parametrizer:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
 
 # which is DHP?
-# todo: run with command run.
 try:
     result = subprocess.run(['which', 'DihedralParametrizer'], check=True, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, encoding='utf8')
@@ -361,33 +465,27 @@ except subprocess.CalledProcessError as e:
     raise
 
 # Run DihedralParametrizer with MPI
-#command = "mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py `which DihedralParametrizer` dhp_settings.yml >> DHP_mainout.txt 2> dhp_mpi_stderr"
-#command = "mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py `which DihedralParametrizer` dhp_settings.yml"
 command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {dihedral_parametrizer_path} ./dhp_settings.yml"
-# command = (f"mpirun --bind-to none --mca plm isolated {os.environ.get('NMMPIARGS')} {os.environ.get('ENVCOMMAND')} "
-#                f"--hostfile {os.environ.get('HOSTFILE')} --mca btl self,vader,tcp python -m mpi4py `which DihedralParametrizer` dhp_settings.yml")
 run_command(command, use_shell=True)
 
 # Create symbolic links
 #os.symlink('molecule.pdb', 'molecule_0.pdb')
 #os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
 
-shutil.copy('molecule.pdb', 'molecule_0.pdb')
-shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')
+shutil.copy('molecule.pdb', 'molecule_0.pdb')  # deposit_init change?
+shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')  # deposit_init change?
 
-
-list_directory_contents()
-
+# list_directory_contents()
 
 # 4. Deposit.
 logger.info("Deposit starts . . .")
 
 # 4.0. Copy deposit_init.sh to the current dir.
 
-source_path = f'{opt_tmpl}/Deposit/deposit_init.sh'  # todo: 2 molecules if testing . . .
+source_path = f'{opt_tmpl}/Deposit/deposit_init.sh'
 destination_path = './deposit_init.sh'  # Current directory
 
-# Copy deposit_init.sh
+# Copy deposit_init.sh.
 try:
     shutil.copy(source_path, destination_path)
     print(f"Copied {source_path} to {destination_path}")
@@ -395,6 +493,12 @@ except Exception as e:
     logger.error("Failed to copy the file", error=str(e))
     raise
 
+# copy_with_changes(
+#     source_path, changes['Deposit'], destination_path
+# )
+
+
+set_env_variables_from_dict(changes['Deposit'])
 
 # Generate a UUID in Python
 generated_uuid = str(uuid.uuid4())
@@ -407,26 +511,39 @@ env_vars['GENERATED_UUID'] = generated_uuid
 script_path = 'deposit_init.sh'  # the way deposit is run is different
 run_shell_script(script_path, env_vars)
 
+# deposit_init commands -->
+# current_dir, working_dir = setup_working_directory()
+# check_and_extract_deposit_restart()
+# deposit_simulation()
+# convert_structure()
+# add_periodic_copies_deposit()
+# create_deposit_restart_zip()
+# handle_deposit_working_dir_cleanup(current_dir, working_dir)
+# # run_analysis()
+# # append_settings()
+#
+# os.chdir(current_dir)
+# <-- deposit_init commands
+
+if debug:
+    list_directory_contents()
+# todo check output files.
+
 # 5. QP.
 logger.info("QP starts . . .")
 
-# 4.0. Copy deposit_init.sh to the current dir.
+# 5.0. Copy deposit_init.sh to the current dir.
 
-source_path = f'{opt_tmpl}/qp/settings_ng.yml'  # todo: 2 molecules if testing . . .
+source_path = f'{opt_tmpl}/QuantumPatch/settings_ng.yml'
 destination_path = './settings_ng.yml'  # Current directory
 
 # Copy settings_ng.yml of QP
-try:
-    shutil.copy(source_path, destination_path)
-    print(f"Copied {source_path} to {destination_path}")
-except Exception as e:
-    logger.error("Failed to copy the file", error=str(e))
-    raise
 
+copy_with_changes(source_path, changes['QuantumPatch'], destination_path)
 
 # Generate a random directory inside the current directory
 current_dir = os.getcwd()
-scratch_dir = os.path.join(current_dir, "scratch_" + next(tempfile._get_candidate_names()))
+scratch_dir = os.path.join(current_dir, "qp_scratch_" + next(tempfile._get_candidate_names()))
 
 # Ensure the directory exists
 os.makedirs(scratch_dir, exist_ok=True)
@@ -435,9 +552,9 @@ os.makedirs(scratch_dir, exist_ok=True)
 os.environ['SCRATCH'] = scratch_dir
 
 # Print the SCRATCH directory to verify
-print(f"SCRATCH is set to: {os.environ['SCRATCH']}")
+logger.info(f"SCRATCH for QuantumPatch is set to: {os.environ['SCRATCH']}")
 
-# 4.1. RUN QP
+# 5.1. RUN QP
 
 # the only necessary input for QP: structure or structurePBC is in the current folder.
 
@@ -451,13 +568,17 @@ except subprocess.CalledProcessError as e:
     logger.error("Failed to find QuantumPatch", error=str(e))
     raise
 
+os.environ['OMP_NUM_THREADS'] = '1'
 
-command = f'mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {qp_path}'
+# command = f'mpirun --bind-to none -np 30 $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {qp_path}'
+command = f'mpirun --bind-to none -np 30 $NMMPIARGS $ENVCOMMAND --mca btl self,vader,tcp python -m mpi4py {qp_path}'  # todo not hard code
 run_command(command, use_shell=True)  # use or not use?
 
-# 4.2. Prepare input for LF
+# todo check if output files are there.
 
-# Define the directory to be zipped and the name of the zip file
+# 5.2. Prepare input for LF
+
+# Define the directory to be zipped and the name of the zip file: needed for lightforge
 directory_to_zip = "Analysis"
 zip_file_name = "QP_output_0.zip"
 
@@ -471,7 +592,7 @@ with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Add the file to the zip file, preserving the directory structure
             zipf.write(file_path, os.path.relpath(file_path, directory_to_zip))
 
-print(f"Directory '{directory_to_zip}' zipped into '{zip_file_name}' successfully. This will be the LF input.")
+logger.info(f"Directory '{directory_to_zip}' zipped into '{zip_file_name}' successfully. This will be the LF input.")
 
 # 5. Lightforge
 
@@ -479,13 +600,14 @@ source_path = f'{opt_tmpl}/lightforge/settings'
 destination_path = './settings'
 
 # Copy settings of LF to the current dir
-try:
-    shutil.copy(source_path, destination_path)
-    print(f"Copied {source_path} to {destination_path}")
-except Exception as e:
-    logger.error("Failed to copy the file", error=str(e))
-    raise
+# try:
+#     shutil.copy(source_path, destination_path)
+#     print(f"Copied {source_path} to {destination_path}")
+# except Exception as e:
+#     logger.error("Failed to copy the file", error=str(e))
+#     raise
 
+copy_with_changes(source_path, changes['lightforge'], destination_path)
 
 try:
     result = subprocess.run(['which', 'lightforge'], check=True, stdout=subprocess.PIPE,
@@ -496,9 +618,11 @@ except subprocess.CalledProcessError as e:
     logger.error("Failed to find lightforge", error=str(e))
     raise
 
-command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n 4 --mca btl self,vader,tcp python -m mpi4py {lightforge_path} -s settings'
+os.environ['OMP_NUM_THREADS'] = '1'
+command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n {numcpus} --mca btl self,vader,tcp python -m mpi4py {lightforge_path} -s settings'
 run_command(command, use_shell=True)
 
+# todo check.
 
 
 # Finalizing -->
