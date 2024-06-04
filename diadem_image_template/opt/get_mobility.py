@@ -2,6 +2,7 @@
 import glob
 import pathlib
 import shutil
+import sys
 import zipfile
 
 import yaml
@@ -285,6 +286,23 @@ def run_shell_script(script_path, env_vars):
         raise
 
 
+def check_required_output_files_exist(filepaths, description="file"):
+    """
+    Check if a file or list of files exist in the current working directory and log a critical error if any do not.
+    Raise FileNotFoundError if any file is missing.
+    """
+    if isinstance(filepaths, (str, pathlib.Path)):
+        filepaths = [filepaths]
+
+    cwd = pathlib.Path.cwd()
+    missing_files = [str(filepath) for filepath in filepaths if not (cwd / filepath).is_file()]
+
+    if missing_files:
+        logger.critical(f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
+        raise FileNotFoundError(
+            f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
+
+
 if debug:
     logger.info(f"{os.getcwd()=}")
     list_installed_micromamba_packages()
@@ -299,7 +317,6 @@ if debug:
     logger.info("NMMPIARGS", NMMPIARGS=os.environ.get('NMMPIARGS'))
     logger.info("ENVCOMMAND", ENVCOMMAND=os.environ.get('ENVCOMMAND'))
     logger.info("HOSTFILE", HOSTFILE=os.environ.get('HOSTFILE'))
-
 
 try:
     with open("molecule.yml", 'rt') as infile:
@@ -317,75 +334,67 @@ except Exception as e:
     logger.error("Failed to load calculator.yml", error=str(e))
     raise
 
-
-# The engine, which was instantiated needs to provide "provides" (e.g HOMO and LUMO)
+# The engine, which was instantiated, needs to provide "provides" (e.g HOMO and LUMO)
 provides = calcdict["provides"]
 changes = calcdict['specification']
+global_calc_settings = changes.get(
+    'global')  # contains things which are general to all specifications, in this case to all tools. Line number of cpus.
 
 #we read smiles and molid
 inchi = moldict["inchi"]
 inchiKey = moldict["inchiKey"]
 
-# 0 .PREOPTIMIZATION WITH NO NM SOFTWARE
+
+
+# 1 .PREOPTIMIZATION WITH NO NM SOFTWARE
 # we generate a bad 3d structure. Plan below:
-# mol.inchi -[obabel]-> mol.xyz -> []
+# mol.inchi -[obabel]-> mol.xyz ->[xtb]-> xtbout.xyz -[obabel]-> input_molecule.mol2
 mol_inchi = 'mol.inchi'
 with open(mol_inchi, 'w') as outfile:
     outfile.write(f"{inchi}\n")
+
 logger.info("Generate 3D conformer of the molecule . . .")
 initial_conformer_xyz = 'mol.xyz'
 command = f"obabel -i inchi {mol_inchi} -o xyz -O {initial_conformer_xyz} --gen3d"
-subprocess.check_output(shlex.split(command))
+run_command(command)
+required_files = [initial_conformer_xyz]
+check_required_output_files_exist(initial_conformer_xyz)
 
-# 1.opt. optimize using xtb from xtb, not from parametrizer.
-# we optimize the bad 3d structure
-command = "xtb mol.xyz --opt"  # outputs xtbout.xyz
-output = subprocess.check_output(shlex.split(command), encoding="utf8", text=True).split("\n")
+# optimize using xtb from xtb, not from parametrizer.
+# we optimize the bad 3d structure [initial_conformer]
+logger.info("xtb optimization of 3D conformer of the molecule . . .")
+command = f"xtb {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
+run_command(command)
+xtb_preoptimized_xyz = 'xtbopt.xyz'
+required_files = [xtb_preoptimized_xyz]
+check_required_output_files_exist(required_files)
 
-# 1.end: transform to mol2
-# Construct the Open Babel command to convert from XYZ to mol2 format
 logger.info("Transfer xyz to mol2 . . .")
-input_xyz = 'xtbopt.xyz'
-output_mol2 = 'input_molecule.mol2'
-command = f"obabel -i xyz {input_xyz} -o mol2 -O {output_mol2}"
-subprocess.check_output(shlex.split(command))
+xtb_preoprimized_mol2 = 'input_molecule.mol2'
+command = f"obabel -i xyz {xtb_preoptimized_xyz} -o mol2 -O {xtb_preoprimized_mol2}"
+run_command(command)
+required_files = [xtb_preoprimized_mol2]
+check_required_output_files_exist(required_files)
 
-input_molecule_for_parametrizer = pathlib.Path.cwd() / output_mol2
-assert input_molecule_for_parametrizer.is_file(), f"Required file {input_molecule_for_parametrizer} does not exist"
+logger.info(". . . Preoptimization successful!")
 
 
 
 # 2. Parametrizer.
-# fetch parametrizer settings into the currrent directory
+# below, the typical way to set up and run NM software
+executable = "QPParametrizer"  # name of the [main] entrypoint that will be run.
+command = f"{executable}"
 source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
 destination_path = './parametrizer_settings.yml'  # Current directory
-
-# Copy the parametrizer_settings.yml (old)
-#try:
-#    shutil.copy(source_path, destination_path)
-#    print(f"Copied {source_path} to {destination_path}")
-#except Exception as e:
-#    logger.error("Failed to copy the file", error=str(e))
-#    raise
-
-
-# Define the command
-command = "QPParametrizer"
-
-# Copy "parametrizer_settings.yml" changing them using the calculator configurations
-copy_with_changes(source_path, changes[command], destination_path)
-
-if debug:  # check if the template was changed according to the calculator
-    source_dict, destination_dict = load_yaml(source_path), load_yaml(destination_path)
-    logger.info("QPP settings template and actually used", extra={'before': source_dict, 'after': destination_dict})
+copy_with_changes(source_path, changes[executable], destination_path)  # executable == calculator['configuration']!
 
 run_command(command)
 
-# check after Parametrizer:
+# ensure the output exists
 output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
 molecule_spf_from_parametrizer = "molecule.spf"
-required_files_after_parametrizer = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer]
-for required_file in required_files_after_parametrizer:
+required_files = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer]
+for required_file in required_files:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
 
 if debug:
@@ -401,9 +410,9 @@ logger.info("DHP starts . . .")
 
 numcpus = 30  # todo remove
 
+# todo Timo hostfile is configued in  q
 hostfile_path = os.environ.get('HOSTFILE', 'generated_hostfile.txt')  # it might be set from above.  # todo remove?
 os.environ['HOSTFILE'] = hostfile_path
-
 # Open the HOSTFILE for appending
 with open(hostfile_path, 'a') as hostfile:
     for i in range(numcpus):
@@ -449,9 +458,9 @@ output_molecule_pdb_after_add_dyhedrals = "molecule.pdb"
 output_molecule_spf_after_add_dyhedrals = "molecule.spf"
 dhp_settings = "dhp_settings.yml"
 
-required_files_after_parametrizer = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals,
-                                     dhp_settings]
-for required_file in required_files_after_parametrizer:
+required_files = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals,
+                  dhp_settings]
+for required_file in required_files:
     assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
 
 # which is DHP?
