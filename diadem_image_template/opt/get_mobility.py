@@ -2,6 +2,7 @@
 import glob
 import pathlib
 import shutil
+import socket
 import sys
 import zipfile
 
@@ -304,19 +305,6 @@ def check_required_output_files_exist(filepaths, description="file"):
             f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
 
 
-@contextmanager
-def change_directory(destination):  # todo remove
-    """
-    Context manager for changing the current working directory.
-    """
-    original_dir = pathlib.Path.cwd()
-    try:
-        os.chdir(destination)
-        yield
-    finally:
-        os.chdir(original_dir)
-
-
 class ChangeDirectory:
     """
     Context manager for creating and changing the current working directory to a simulations directory.
@@ -335,6 +323,36 @@ class ChangeDirectory:
     def __exit__(self, exc_type, exc_value, traceback):
         os.chdir(self.original_path)
         logger.info(f"Returned to original directory {self.original_path}")
+
+
+def create_output_directory_and_copy_files(required_files, output_dir='out'):
+    """
+    Create an output directory and copy the required files into it.
+
+    Parameters:
+    required_files (list): List of file paths to be copied.
+    output_dir (str): Name of the output directory.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    for file in required_files:
+        shutil.copy(file, output_dir)
+
+
+def generate_hostfile(num_cores: int, output_file: str):
+    """
+    Generates a universal hostfile for SLURM by determining the node name dynamically.
+
+    Parameters:
+    num_cores (int): Number of physical cores/processes.
+    output_file (str): Output file path for the hostfile.
+    """
+    # Get the node name (hostname)
+    node_name = socket.gethostname()
+
+    # Write the node name num_cores times to the output file
+    with open(output_file, 'w') as file:
+        for _ in range(num_cores):
+            file.write(f"{node_name}\n")
 
 
 if debug:
@@ -368,6 +386,22 @@ except Exception as e:
     logger.error("Failed to load calculator.yml", error=str(e))
     raise
 
+
+def copy_files_from_previous_directory(previous_executable, sub_dir='out'):
+    """
+    Copy files from the previous executable's output directory to the current working directory.
+
+    Parameters:
+    previous_executable (str): Name of the previous executable directory.
+    sub_dir (str): Subdirectory inside the previous executable's directory to copy files from.
+    """
+    prev_output_dir = pathlib.Path('../') / previous_executable / sub_dir
+    current_dir = pathlib.Path.cwd()
+
+    for file in prev_output_dir.iterdir():
+        if file.is_file():
+            shutil.copy(file, current_dir)
+
 # The engine, which was instantiated, needs to provide "provides" (e.g HOMO and LUMO)
 provides = calcdict["provides"]
 changes = calcdict['specification']
@@ -378,14 +412,13 @@ global_calc_settings = changes.get(
 inchi = moldict["inchi"]
 inchiKey = moldict["inchiKey"]
 
-
-
 # 1 .PREOPTIMIZATION WITH NO NM SOFTWARE
 # Create a new directory for preoptimization
 # we generate a bad 3d structure. Plan below:
 # mol.inchi -[obabel]-> mol.xyz ->[xtb]-> xtbout.xyz -[obabel]-> input_molecule.mol2
 
-with ChangeDirectory("preoptimization"):
+executable = 'xtb'
+with ChangeDirectory(executable):
     mol_inchi = 'mol.inchi'
     with open(mol_inchi, 'w') as outfile:
         outfile.write(f"{inchi}\n")
@@ -400,7 +433,7 @@ with ChangeDirectory("preoptimization"):
     # optimize using xtb from xtb, not from parametrizer.
     # we optimize the bad 3d structure [initial_conformer]
     logger.info("xtb optimization of 3D conformer of the molecule . . .")
-    command = f"xtb {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
+    command = f"{executable} {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
     run_command(command)
     xtb_preoptimized_xyz = 'xtbopt.xyz'
     required_files = [xtb_preoptimized_xyz]
@@ -412,116 +445,119 @@ with ChangeDirectory("preoptimization"):
     run_command(command)
     required_files = [xtb_preoprimized_mol2]
     check_required_output_files_exist(required_files)
+    create_output_directory_and_copy_files(required_files)
 
 logger.info(". . . Preoptimization successful!")
 
-# 2. Parametrizer.
+# 1 -> 2
+previous_executable = str(executable)  #
 
-
+# 2.
 executable = "QPParametrizer"  # name of the [main] entrypoint that will be run.
-command = f"{executable}"
-source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
-destination_path = './parametrizer_settings.yml'  # Current directory
-copy_with_changes(source_path, changes[executable], destination_path)  # executable == calculator['configuration']!
+with ChangeDirectory(executable):
+    # todo: copy the output directory may be a part of the context manager
+    previous_out = pathlib.Path('../') / previous_executable / 'out'
+    current_dir = pathlib.Path.cwd()
+    shutil.copytree(previous_out, current_dir, dirs_exist_ok=True)
 
-run_command(command)
+    command = f"{executable}"
+    source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
+    destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
+    copy_with_changes(source_path, changes[executable], destination_path)  # executable == calculator['configuration']!
 
-# ensure the output exists
-output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
-molecule_spf_from_parametrizer = "molecule.spf"
-required_files = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer]
+    run_command(command)
 
-for required_file in required_files:
-    assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
+    # ensure the output exists
+    output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
+    molecule_spf_from_parametrizer = "molecule.spf"
+    molecule_pdb_from_parametrizer = "molecule.pdb"
+    required_files = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer, molecule_pdb_from_parametrizer]
+    check_required_output_files_exist(required_files)
+    create_output_directory_and_copy_files(required_files)
 if debug:
     list_directory_contents()
-sys.exit()
+logger.info(". . . QPParametrizer successful!")
 
-
+# 2->2-3
+previous_executable = str(executable)
 
 # 3. DHP.
 logger.info("DHP starts . . .")
+executable = 'DihedralParametrizer'
 
-# 3.0. Prepare DHP or anything using HOSTFILE
-# todo: make a function write hostile.
+with ChangeDirectory(executable):
+    previous_out = pathlib.Path('../') / previous_executable / 'out'
+    current_dir = pathlib.Path.cwd()
+    shutil.copytree(previous_out, current_dir, dirs_exist_ok=True)
 
-#numcpus = psutil.cpu_count()
+    # 3.0. Prepare HOSTFILE
+    all_avail_physical_cpus = psutil.cpu_count(logical=False)
+    numcpus = global_calc_settings.get('ncpus', all_avail_physical_cpus)
+    hostfile_name = os.environ.get('HOSTFILE', 'hostfile.txt')  # it might be set from above.
+    os.environ['HOSTFILE'] = hostfile_name
+    generate_hostfile(numcpus, hostfile_name)
 
-numcpus = 30  # todo remove
+    # Run add_dihedral_angles.sh
 
-# todo Timo hostfile is configued in  q
-hostfile_path = os.environ.get('HOSTFILE', 'generated_hostfile.txt')  # it might be set from above.  # todo remove?
-os.environ['HOSTFILE'] = hostfile_path
-# Open the HOSTFILE for appending
-with open(hostfile_path, 'a') as hostfile:
-    for i in range(numcpus):
-        hostfile.write("localhost\n")
-# todo: end of todo
+    # Ensure DEPTOOLS is set in the environment todo needed?
+    dep_tools = os.environ.get('DEPTOOLS')
+    if not dep_tools:
+        logger.error("DEPTOOLS environment variable is not set")
+        raise EnvironmentError("DEPTOOLS environment variable is not set")
 
-# Run add_dihedral_angles.sh
+    # Add dihedral angles
+    command = f"{dep_tools}/add_dihedral_angles.sh {output_molecule_mol2_from_parametrizer} {molecule_spf_from_parametrizer}"
+    run_command(command)
 
-# Ensure DEPTOOLS is set in the environment
-dep_tools = os.environ.get('DEPTOOLS')
-if not dep_tools:
-    logger.error("DEPTOOLS environment variable is not set")
-    raise EnvironmentError("DEPTOOLS environment variable is not set")
+    # Zip files
+    command = f"zip report.zip {output_molecule_mol2_from_parametrizer} molecule.pdb {molecule_spf_from_parametrizer}"
+    run_command(command)
 
-# Add dihedral angles
-command = f"{dep_tools}/add_dihedral_angles.sh {output_molecule_mol2_from_parametrizer} {molecule_spf_from_parametrizer}"
-run_command(command)
+    # Append mol_data.yml to output_dict.yml ### artem: why do we need this at all?
+    #command = "cat mol_data.yml >> output_dict.yml"
 
-# Zip files
-command = f"zip report.zip {output_molecule_mol2_from_parametrizer} molecule.pdb {molecule_spf_from_parametrizer}"
-run_command(command)
+    # Convert mol2 to svg
+    command = "obabel -imol2 output_molecule.mol2 -osvg"
+    run_command(command, output_file="output_molecule.svg")
 
-# Append mol_data.yml to output_dict.yml ### artem: why do we need this at all?
-#command = "cat mol_data.yml >> output_dict.yml"
+    source_path = f'{opt_tmpl}/DihedralParametrizer/dhp_settings.yml'
+    destination_path = './dhp_settings.yml'  # Current directory
 
-# Convert mol2 to svg
-command = "obabel -imol2 output_molecule.mol2 -osvg"
-run_command(command, output_file="output_molecule.svg")
+    copy_with_changes(source_path, changes["DihedralParametrizer"], destination_path)
 
-source_path = f'{opt_tmpl}/DihedralParametrizer/dhp_settings.yml'
-destination_path = './dhp_settings.yml'  # Current directory
+    # ensure that the necessary files exist and their files are as expected
+    output_molecule_pdb_after_add_dyhedrals = "molecule.pdb"
+    output_molecule_spf_after_add_dyhedrals = "molecule.spf"
+    dhp_settings = "dhp_settings.yml"
 
-copy_with_changes(source_path, changes["DihedralParametrizer"], destination_path)
+    required_files = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals, dhp_settings]
+    check_required_output_files_exist(required_files)
 
-if debug:  # check if the template was changed according to the calculator
-    source_dict, destination_dict = load_yaml(source_path), load_yaml(destination_path)
-    logger.info("DHP settings template and actually used", extra={'before': source_dict, 'after': destination_dict})
+    # which is DHP?
+    try:
+        result = subprocess.run(['which', 'DihedralParametrizer'], check=True, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, encoding='utf8')
+        dihedral_parametrizer_path = result.stdout.strip()
+        logger.info(f"Found DihedralParametrizer at {dihedral_parametrizer_path}")
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to find DihedralParametrizer", error=str(e))
+        raise
 
-# list_directory_contents()
+    # Run DihedralParametrizer with MPI
+    command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {dihedral_parametrizer_path} ./dhp_settings.yml"
+    run_command(command, use_shell=True)
 
-# ensure that the necessary files exist and their files are as expected
-output_molecule_pdb_after_add_dyhedrals = "molecule.pdb"
-output_molecule_spf_after_add_dyhedrals = "molecule.spf"
-dhp_settings = "dhp_settings.yml"
+    # Create symbolic links
+    #os.symlink('molecule.pdb', 'molecule_0.pdb')
+    #os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
 
-required_files = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals,
-                  dhp_settings]
-for required_file in required_files:
-    assert (pathlib.Path.cwd() / required_file).is_file(), f"Required file {required_file} does not exist"
+    shutil.copy('molecule.pdb', 'molecule_0.pdb')  # deposit_init change? # todo
+    shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')  # deposit_init change? # todo
 
-# which is DHP?
-try:
-    result = subprocess.run(['which', 'DihedralParametrizer'], check=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, encoding='utf8')
-    dihedral_parametrizer_path = result.stdout.strip()
-    logger.info(f"Found DihedralParametrizer at {dihedral_parametrizer_path}")
-except subprocess.CalledProcessError as e:
-    logger.error("Failed to find DihedralParametrizer", error=str(e))
-    raise
+logger.info(". . . DihedralParametrizer successful!")
+sys.exit()
 
-# Run DihedralParametrizer with MPI
-command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {dihedral_parametrizer_path} ./dhp_settings.yml"
-run_command(command, use_shell=True)
 
-# Create symbolic links
-#os.symlink('molecule.pdb', 'molecule_0.pdb')
-#os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
-
-shutil.copy('molecule.pdb', 'molecule_0.pdb')  # deposit_init change?
-shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')  # deposit_init change?
 
 # list_directory_contents()
 
