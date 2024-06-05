@@ -1,0 +1,70 @@
+calculatorId: mobility_calculator
+files:
+- files_for_kmc.zip
+image: diadem.azurecr.io/mobility_small:0.0.1
+onDemandEnabled: true
+poolId: Standard_D4_v3
+price: 50
+provides:
+- mobility
+specification:
+  global:
+    ncpus: 30
+    stop_after: Deposit
+  QPParametrizer:
+    DFT Engine:
+      Threads: '30'
+      Engine: Psi4
+      Memory (MB): 78000.0
+      PySCF Settings:
+        basis: def2-SVP
+  DihedralParametrizer:
+    DFT_options:
+      Basis: def2-SVP
+      Engine: PySCF
+      memory_per_thread: 4000
+    DH_scan_steps: 10
+    forcefield_optimization:
+        no_samples: 10
+    version: v4
+    scf_iter: 1
+  Deposit:
+    simparams:
+      Nmol: 100
+      PBC: True
+      sa:
+        steps: 130000
+        cycles: 30
+      postrelaxation_steps: 10000
+    Box:
+      Lx: 40.0
+      Ly: 40.0
+      Lz: 120.0
+      grid_overhang: 20
+  QuantumPatch:
+    QuantumPatch:
+      calculateJs: true
+      qpproxJs: true
+      morphology: structurePBC.cml
+      partial_charge_cutoff: 30
+    System:
+      Core:
+        number: 10
+      Shells:
+        '0':
+          cutoff: 7.0
+        '1':
+          cutoff: 30.0
+        '2':
+          cutoff: 15.0
+  lightforge:
+    morphology_width: 30
+    layers:
+      - thickness: 30
+    experiments:
+      - simulations: 10
+        Temperature: 300
+        field_strength: 0.2 0.3 0.4
+    iv_fluctuation: 0.05
+    max_iterations: 500000
+version: 1.0.0
