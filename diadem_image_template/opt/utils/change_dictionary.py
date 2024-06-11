@@ -3,16 +3,34 @@ from typing import Union, Dict, Any, Optional
 from .general import load_yaml, save_yaml
 
 
-def update_dict(original_dict, changes_dict):
-    for key, value in changes_dict.items():
+def update_dict(original, changes):
+    for key, value in changes.items():
         if isinstance(value, dict):
-            if key not in original_dict or not isinstance(original_dict[key], dict):
-                raise KeyError(f"Key '{key}' not found or is not a dictionary in the original dictionary.")
-            update_dict(original_dict[key], value)
-        else:
-            if key not in original_dict:
+            if key not in original:
                 raise KeyError(f"Key '{key}' not found in the original dictionary.")
-            original_dict[key] = value
+            if isinstance(original[key], dict):
+                update_dict(original[key], value)
+            else:
+                original[key] = value
+        elif isinstance(value, list):
+            if key not in original:
+                raise KeyError(f"Key '{key}' not found in the original dictionary.")
+            if isinstance(original[key], list):
+                for i, item in enumerate(value):
+                    if i < len(original[key]) and isinstance(item, dict):
+                        update_dict(original[key][i], item)
+                    else:
+                        if i < len(original[key]):
+                            original[key][i] = item
+                        else:
+                            original[key].append(item)
+            else:
+                original[key] = value
+        else:
+            if key not in original:
+                raise KeyError(f"Key '{key}' not found in the original dictionary.")
+            original[key] = value
+    return original
 
 
 def copy_with_changes(

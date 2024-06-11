@@ -1,50 +1,48 @@
-#!/usr/bin/env python3
+# !/usr/bin/env python3
+"""
+Every component of the workflow has this structure:
+get_output
+prepare: run some python commands, or commands
+run command [executable]
+check_output
+check_files
+copy_out_to_out
+copy files to diadem_files
+"""
 import glob
+import os
 import pathlib
+import shlex
 import shutil
 import socket
-import sys
-import zipfile
-
-import yaml
 import subprocess
-import shlex
-import structlog
-import logging
-import os
-import uuid
+import sys
 import tempfile
-from utils.change_dictionary import copy_with_changes  # todo: rename
-from utils.general import load_yaml, save_yaml
+import uuid
+import zipfile
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Any
+
 import psutil
-from contextlib import contextmanager
+import structlog
+import yaml
+
+from utils.build_command_from_yml import build_command
+from utils.change_dictionary import copy_with_changes  # todo: rename
+from utils.logging_config import configure_logging
+from utils.subprocess_functions import run_command
+from utils.deposit_functions import setup_working_directory, check_and_extract_deposit_restart, \
+    add_periodic_copies_deposit, create_deposit_restart_zip, handle_deposit_working_dir_cleanup, run_analysis, \
+    append_settings
+from utils.result import get_result_from
+
 
 debug = False
 opt_tmpl = "/opt/tmpl"
 
-# Configure structlog
-logging.basicConfig(
-    filename='log.txt',
-    filemode='w',
-    format='%(message)s',
-    level=logging.INFO
-)
-
-structlog.configure(
-    processors=[
-        structlog.stdlib.filter_by_level,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.processors.TimeStamper(fmt="ISO"),
-        structlog.processors.JSONRenderer()
-    ],
-    context_class=dict,
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
-
 # Create a logger
+configure_logging()
 logger = structlog.get_logger()
 
 
@@ -63,181 +61,6 @@ def list_directory_contents(path='.'):
         raise
 
 
-def run_command(command, use_shell=False, output_file=None):
-    """
-    Run a shell command and log its output using structlog. Optionally redirect stdout to an output file.
-    """
-    try:
-        logger.info(f"Running command: {command}")
-        if use_shell:
-            if output_file:
-                with open(output_file, 'w') as out_file:
-                    result = subprocess.run(command, check=True, stdout=out_file, stderr=subprocess.PIPE, shell=True,
-                                            encoding='utf8')
-                    logger.info(f"Command stdout written to {output_file}")
-                    if result.stderr:
-                        logger.error(f"Command stderr: {result.stderr}")
-            else:
-                result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True,
-                                        encoding='utf8')
-                if result.stdout:
-                    logger.info(f"Command stdout: {result.stdout}")
-                if result.stderr:
-                    logger.error(f"Command stderr: {result.stderr}")
-        else:
-            command_list = shlex.split(command) if isinstance(command, str) else command
-            if output_file:
-                with open(output_file, 'w') as out_file:
-                    result = subprocess.run(command_list, check=True, stdout=out_file, stderr=subprocess.PIPE,
-                                            encoding='utf8')
-                    logger.info(f"Command stdout written to {output_file}")
-                    if result.stderr:
-                        logger.error(f"Command stderr: {result.stderr}")
-            else:
-                result = subprocess.run(command_list, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                        encoding='utf8')
-                if result.stdout:
-                    logger.info(f"Command stdout: {result.stdout}")
-                if result.stderr:
-                    logger.error(f"Command stderr: {result.stderr}")
-    except subprocess.CalledProcessError as e:
-        logger.error("Command failed", command=command, returncode=e.returncode, output=e.output, stderr=e.stderr)
-        raise
-    except FileNotFoundError as e:
-        logger.error(f"Command not found: {e.filename}", error=str(e))
-        raise
-
-
-def set_env_variables_from_dict(env_vars):
-    '''
-    For deposit: helps to set the args
-    '''
-
-    def set_env(prefix, d):
-        for key, value in d.items():
-            if isinstance(value, dict):
-                set_env(f"{prefix}.{key}", value)
-            else:
-                os.environ[f"{prefix}.{key}"] = str(value)
-
-    for key, value in env_vars.items():
-        set_env(key, value)
-
-    return dict(os.environ)
-
-
-# Deposit scripts below -->
-
-def setup_working_directory():
-    current_dir = os.getcwd()
-    scratch_dir = os.environ.get('SCRATCH')
-    home_dir = os.environ.get('HOME')
-    generated_uuid = os.environ.get('GENERATED_UUID', 'default_uuid')  # Set a default UUID if not provided
-
-    if scratch_dir and os.path.isdir(scratch_dir):
-        working_dir = os.path.join(scratch_dir, os.getlogin(), generated_uuid)
-    elif home_dir and os.path.isdir(home_dir):
-        working_dir = os.path.join(home_dir, 'tmp', generated_uuid)
-    else:
-        working_dir = current_dir
-
-    os.makedirs(working_dir, exist_ok=True)
-    for item in os.listdir(current_dir):
-        s = os.path.join(current_dir, item)
-        d = os.path.join(working_dir, item)
-        if os.path.isdir(s):
-            shutil.copytree(s, d, dirs_exist_ok=True)
-        else:
-            shutil.copy2(s, d)
-
-    logger.info(f"Deposit running on node {os.uname().nodename} in directory {working_dir}")
-    os.chdir(working_dir)
-    return current_dir, working_dir
-
-
-def check_and_extract_deposit_restart():
-    if os.environ.get('DO_RESTART') == 'True':
-        if os.path.isfile('restartfile.zip'):
-            with zipfile.ZipFile('restartfile.zip', 'r') as zip_ref:
-                zip_ref.testzip()
-                if zip_ref.testzip() is not None:
-                    print("Could not read restartfile. Aborting run.")
-                    exit(1)
-                print("Found Checkpoint, extracting for restart.")
-                zip_ref.extractall()
-            os.remove('restartfile.zip')
-        else:
-            print("Restart was enabled, but no checkpoint file was found. Not starting simulation.")
-            exit(5)
-
-
-def convert_structure():
-    run_command("obabel structure.cml -O structure.mol2", use_shell=True)
-
-
-def deposit_simulation():
-    command = (
-        "Deposit molecule.0.pdb=molecule_0.pdb molecule.0.spf=molecule_0.spf molecule.0.conc=1.0 "
-        "simparams.Thi=4000.0 simparams.Tlo=300.0 simparams.sa.Tacc=5.0 simparams.sa.cycles=${UC_PROCESSORS_PER_NODE} "
-        "simparams.sa.steps=${simparams.sa.steps} simparams.Nmol=${simparams.Nmol} simparams.moves.dihedralmoves=True "
-        "Box.Lx=${Box.Lx} Box.Ly=${Box.Ly} Box.Lz=${Box.Lz} Box.pbc_cutoff=10.0 simparams.PBC=${simparams.PBC} "
-        "machineparams.ncpu=${UC_PROCESSORS_PER_NODE} Box.grid_overhang=${Box.grid_overhang} "
-        "simparams.postrelaxation_steps=${simparams.postrelaxation_steps}"
-    )
-    expanded_command = os.path.expandvars(command)
-    run_command(expanded_command, use_shell=True)
-
-
-def add_periodic_copies_deposit():
-    if True:
-        run_command("$DEPTOOLS/add_periodic_copies.py 7.0", use_shell=True)
-        shutil.move("periodic_output/structurePBC.cml", ".")
-        shutil.rmtree("periodic_output/", ignore_errors=True)
-
-
-def create_deposit_restart_zip():
-    with zipfile.ZipFile('restartfile.zip', 'w') as zipf:
-        for file in ["deposited_*.pdb.gz", "static_parameters.dpcf.gz",
-                     "static_parameters.dpcf_molinfo.dat.gz", "grid.vdw.gz",
-                     "grid.es.gz", "neighbourgrid.vdw.gz"]:
-            for matched_file in glob.glob(file):
-                zipf.write(matched_file)
-                os.remove(matched_file)
-
-
-def handle_deposit_working_dir_cleanup(current_dir, working_dir):
-    data_dir = current_dir
-
-    logger.info(f"Cleaning up working directory: {working_dir}")
-
-    if working_dir != data_dir:
-        os.makedirs(data_dir, exist_ok=True)
-        for item in os.listdir(working_dir):
-            s = os.path.join(working_dir, item)
-            d = os.path.join(data_dir, item)
-            try:
-                if os.path.isdir(s):
-                    shutil.copytree(s, d, dirs_exist_ok=True)
-                else:
-                    if s != d:  # Ensure source and destination are not the same
-                        shutil.copy2(s, d)
-            except Exception as e:
-                logger.warning(f"Failed to copy {s} to {d}: {e}")
-
-        for root, dirs, files in os.walk(data_dir):
-            for file in files:
-                if file in ["*.stderr", "*.stdout", "stdout", "stderr"]:
-                    try:
-                        os.remove(os.path.join(root, file))
-                    except Exception as e:
-                        logger.warning(f"Failed to remove {os.path.join(root, file)}: {e}")
-
-        try:
-            shutil.rmtree(working_dir, ignore_errors=True)
-        except Exception as e:
-            logger.warning(f"Failed to remove working directory {working_dir}: {e}")
-
-
 def list_installed_micromamba_packages():
     try:
         result = subprocess.run(['micromamba', 'list'], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -249,55 +72,22 @@ def list_installed_micromamba_packages():
         raise
 
 
-def run_analysis():
-    #    run_command("QuantumPatchAnalysis", use_shell=True)
-    #    run_command("QuantumPatchAnalysis Analysis.Density.enabled=True Analysis.RDF.enabled=True", use_shell=True)
-    pass
-
-
-def append_settings():
-    with open("deposit_settings.yml", "r") as settings_file:
-        settings_data = settings_file.read()
-    with open("output_dict.yml", "a") as output_file:
-        output_file.write(settings_data)
-
-
-# <-- Deposit scripts below
-
-
-def run_shell_script(script_path, env_vars):
-    """
-    Run a shell script and log its output using structlog.
-    """
-    try:
-        logger.info(f"Running shell script: {script_path}")
-        result = subprocess.run(
-            f'bash {script_path}',
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=env_vars
-        )
-        logger.info(f"Script output:\n{result.stdout}")
-        if result.stderr:
-            logger.error(f"Script error output:\n{result.stderr}")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Script failed with return code {e.returncode}", error=str(e))
-        raise
-
-
 def check_required_output_files_exist(filepaths, description="file"):
     """
-    Check if a file or list of files exist in the current working directory and log a critical error if any do not.
-    Raise FileNotFoundError if any file is missing.
+    Check if a file or list of files exists in the current working directory and log a critical error if any are missing.
+    Raise a FileNotFoundError if any file is not found.
+    Treat filenames with wildcards (e.g., "Delta_*.png") by finding all files that match the pattern.
     """
     if isinstance(filepaths, (str, pathlib.Path)):
         filepaths = [filepaths]
 
     cwd = pathlib.Path.cwd()
-    missing_files = [str(filepath) for filepath in filepaths if not (cwd / filepath).is_file()]
+    missing_files = []
+
+    for pattern in filepaths:
+        matched_files = glob.glob(str(cwd / pattern))
+        if not matched_files:
+            missing_files.append(str(pattern))
 
     if missing_files:
         logger.critical(f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
@@ -330,12 +120,42 @@ def create_output_directory_and_copy_files(required_files, output_dir='out'):
     Create an output directory and copy the required files into it.
 
     Parameters:
-    required_files (list): List of file paths to be copied.
+    required_files (list): List of file paths to be copied, with support for wildcards.
     output_dir (str): Name of the output directory.
     """
-    os.makedirs(output_dir, exist_ok=True)
-    for file in required_files:
-        shutil.copy(file, output_dir)
+    # Create the output directory using pathlib
+    output_dir_path = pathlib.Path(output_dir)
+    output_dir_path.mkdir(parents=True, exist_ok=True)
+
+    # Copy the required files to the output directory
+    for pattern in required_files:
+        # Expand the wildcard pattern to match files
+        matched_files = glob.glob(pattern)
+        if not matched_files:
+            logger.critical(f"No files matched the pattern: {pattern}")
+            raise FileNotFoundError(f"No files matched the pattern: {pattern}")
+        for file in matched_files:
+            file_path = pathlib.Path(file)
+            shutil.copy(file_path, output_dir_path)
+
+    # Return the absolute path of the output directory
+    return str(output_dir_path.resolve())
+
+
+def fetch_output_from_previous_executable(previous_executable, sub_dir='out'):
+    """
+    Copy files from the previous executable's output directory to the current working directory.
+
+    Parameters:
+    previous_executable (str): Name of the previous executable directory.
+    sub_dir (str): Subdirectory inside the previous executable's directory to copy files from.
+    """
+    prev_output_dir = pathlib.Path('../') / previous_executable / sub_dir
+    current_dir = pathlib.Path.cwd()
+
+    for file in prev_output_dir.iterdir():
+        if file.is_file():
+            shutil.copy(file, current_dir)
 
 
 def generate_hostfile(num_cores: int, output_file: str):
@@ -353,6 +173,131 @@ def generate_hostfile(num_cores: int, output_file: str):
     with open(output_file, 'w') as file:
         for _ in range(num_cores):
             file.write(f"{node_name}\n")
+
+
+def find_executable_path(executable_name):
+    """
+    Find the path of an executable by its name.
+
+    Parameters:
+    executable_name (str): The name of the executable to find.
+
+    Returns:
+    str: The path of the executable.
+
+    Raises:
+    FileNotFoundError: If the executable is not found.
+    """
+    try:
+        result = subprocess.run(['which', executable_name], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                encoding='utf8')
+        executable_path = result.stdout.strip()
+        logger.info(f"Found {executable_name} at {executable_path}")
+        return executable_path
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to find {executable_name}", error=str(e))
+        raise FileNotFoundError(f"{executable_name} not found") from e
+
+
+class Executable(Enum):
+    XTB = 'xtb'
+    QPPARAMETRIZER = 'QPParametrizer'
+    DIHEDRAL_PARAMETRIZER = 'DihedralParametrizer'
+    QUANTUMPATCH = 'QuantumPatch'
+    DEPOSIT = 'Deposit'
+    LIGHTFORGE = 'lightforge'
+
+
+# Define the WorkflowConfig dataclass with an extended constructor
+@dataclass
+class WorkflowConfig:
+    required_files: Dict[Executable, List[str]] = field(default_factory=dict)
+    files: Dict[Executable, List[str]] = field(default_factory=dict)
+    debugFiles: Dict[Executable, List[str]] = field(default_factory=dict)
+    errorStageOut: Dict[Executable, List[str]] = field(default_factory=dict)
+    optionalFiles: Dict[Executable, List[str]] = field(default_factory=dict)
+    result: Dict[Executable, Dict] = field(default_factory=dict)
+
+    @classmethod
+    def from_files(cls, tmpl_folder: str):
+        required_files = cls._read_txt_files(tmpl_folder, 'required_files.txt')
+        files = cls._read_txt_files(tmpl_folder, 'files.txt')
+        operationaFiles = 'operationFiles'
+        debugFiles = cls._read_txt_files(tmpl_folder, f'{operationaFiles}/debugFiles')
+        errorStageOut = cls._read_txt_files(tmpl_folder, f'{operationaFiles}/errorStageout')
+        optionalFiles = cls._read_txt_files(tmpl_folder, f'{operationaFiles}/optionalFiles')
+        result = cls._read_yaml_files(tmpl_folder, 'result.yml')
+        return cls(required_files=required_files, files=files, debugFiles=debugFiles, errorStageOut=errorStageOut,
+                   optionalFiles=optionalFiles, result=result)
+
+    @staticmethod
+    def _read_txt_files(base_directory: str, file_name: str) -> Dict[Executable, List[str]]:
+        files_dict = {}
+        for executable in Executable:
+            file_path = pathlib.Path(base_directory) / executable.value / file_name
+            if file_path.is_file():
+                with open(file_path, 'r') as file:
+                    files_dict[executable] = [line.strip() for line in file.readlines()]
+            else:
+                files_dict[executable] = []
+        return files_dict
+
+    @staticmethod
+    def _read_yaml_files(base_directory: str, file_name: str) -> Dict[Executable, Dict[str, Any]]:
+        yaml_dict = {}
+        for executable in Executable:
+            yaml_path = pathlib.Path(base_directory) / executable.value / file_name
+            if yaml_path.is_file():
+                with open(yaml_path, 'r') as file:
+                    yaml_dict[executable] = yaml.safe_load(file)
+            else:
+                yaml_dict[executable] = {}
+        return yaml_dict
+
+def zip_files_or_file_patterns(debug_files, output_zip_path):
+    with zipfile.ZipFile(output_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        for file_pattern in debug_files:
+            for file in glob.glob(file_pattern, recursive=True):
+                if os.path.isfile(file):
+                    zipf.write(file, os.path.relpath(file, start=os.path.dirname(file_pattern)))
+                elif os.path.isdir(file):
+                    for root, dirs, files in os.walk(file):
+                        for file_name in files:
+                            file_path = os.path.join(root, file_name)
+                            zipf.write(file_path, os.path.relpath(file_path, start=os.path.dirname(file_pattern)))
+    return output_zip_path
+
+
+def distribute_files(executable, wf_config: WorkflowConfig, diadem_files_output_dir):
+    # Process required files (copy to output directory)
+    required_files = wf_config.required_files.get(executable)
+    if required_files:
+        check_required_output_files_exist(required_files)
+        create_output_directory_and_copy_files(required_files, 'out')
+
+    # Process diadem files (copy to output directory)
+    diadem_files = wf_config.files.get(executable)
+    if diadem_files:
+        check_required_output_files_exist(diadem_files)
+        create_output_directory_and_copy_files(diadem_files, diadem_files_output_dir)
+    # Process debug files (zip one level higher)
+    debug_files = wf_config.debugFiles.get(executable)
+    if debug_files:
+        check_required_output_files_exist(debug_files)
+        zip_files_or_file_patterns(debug_files, f'../{executable.value}_debugFiles.zip')
+
+    # Process optional files (zip one level higher)
+    optional_files = wf_config.optionalFiles.get(executable)
+    if optional_files:
+        zip_files_or_file_patterns(optional_files, f'../{executable.value}_optionalFiles.zip')
+
+    # Process errorStageOut files (zip one level higher)
+    error_stageOut_files = wf_config.errorStageOut.get(executable)
+    if error_stageOut_files:
+        zip_files_or_file_patterns(error_stageOut_files, f'../{executable.value}_errorStageOut.zip')
+
+
+########################################################################################################################
 
 
 if debug:
@@ -386,39 +331,72 @@ except Exception as e:
     logger.error("Failed to load calculator.yml", error=str(e))
     raise
 
-
-def copy_files_from_previous_directory(previous_executable, sub_dir='out'):
-    """
-    Copy files from the previous executable's output directory to the current working directory.
-
-    Parameters:
-    previous_executable (str): Name of the previous executable directory.
-    sub_dir (str): Subdirectory inside the previous executable's directory to copy files from.
-    """
-    prev_output_dir = pathlib.Path('../') / previous_executable / sub_dir
-    current_dir = pathlib.Path.cwd()
-
-    for file in prev_output_dir.iterdir():
-        if file.is_file():
-            shutil.copy(file, current_dir)
-
 # The engine, which was instantiated, needs to provide "provides" (e.g HOMO and LUMO)
 provides = calcdict["provides"]
 changes = calcdict['specification']
 global_calc_settings = changes.get(
-    'global')  # contains things which are general to all specifications, in this case to all tools. Line number of cpus.
+    'global')  # contains things which are general to all specifications, in this case to all tools. Like number of cpus.
+files = calcdict['files']
 
-#we read smiles and molid
 inchi = moldict["inchi"]
 inchiKey = moldict["inchiKey"]
 
-# 1 .PREOPTIMIZATION WITH NO NM SOFTWARE
-# Create a new directory for preoptimization
-# we generate a bad 3d structure. Plan below:
-# mol.inchi -[obabel]-> mol.xyz ->[xtb]-> xtbout.xyz -[obabel]-> input_molecule.mol2
+wf_config = WorkflowConfig.from_files(opt_tmpl)
 
-executable = 'xtb'
-with ChangeDirectory(executable):
+for executable in Executable:
+    logger.info(f"Specified files for {executable.value}:")
+    logger.info(required_files={executable.value: list(wf_config.required_files.get(executable))})
+    logger.info(files={executable.value: list(wf_config.files.get(executable))})
+    logger.info(debugFiles={executable.value: list(wf_config.debugFiles.get(executable))})
+    logger.info(errorStageOut={executable.value: list(wf_config.errorStageOut.get(executable))})
+    logger.info(optionalFiles={executable.value: list(wf_config.optionalFiles.get(executable))})
+    logger.info(result={executable.value: list(wf_config.result.get(executable))})
+
+#####
+
+# Ensure that the script knows where to take the files specified in the calculator. Otherwise, it makes to sense to proceed. -->
+def files_names_with_specified_locations(fls):
+    file_names = []
+    for paths in fls.values():
+        for path in paths:
+            file_name = pathlib.Path(path).name
+            file_names.append(file_name)
+    return file_names
+
+
+files_from_locations = files_names_with_specified_locations(wf_config.files)
+files_from_calculator = files
+
+if set(files_from_locations) != set(files_from_calculator):
+    logger.critical(f"The calculator needs to know where to look for the following files: {files_from_calculator}. "
+                    f"However, paths are only specified for the following files: {files_from_locations}. "
+                    f"Exiting...")
+    sys.exit()
+else:
+    logger.info("Sanity Check Successful: The Calculator knows paths to the files that have to be returned.")
+# <--
+
+
+folder_name = 'diadem_files'
+pathlib.Path(folder_name).mkdir(parents=True, exist_ok=True)
+diadem_dir_abs_path = pathlib.Path(folder_name).resolve()
+logger.info(f" Folder to copy specified in the Calculator files will be copied to {diadem_dir_abs_path}.")
+
+resultdict = {inchiKey: {}}  # result that will be processed by front-end.
+
+logger.info(" ================================= Workflow starts . . . ================================================")
+
+# 0. ######################
+executable = Executable.XTB
+###########################
+
+
+logger.info(f"{executable.value} starts . . .")
+
+with ChangeDirectory(executable.value):
+    # 1 .PREOPTIMIZATION WITH NO NM SOFTWARE
+    # we generate a bad 3d structure. Plan below:
+    # mol.inchi -[obabel]-> mol.xyz ->[xtb]-> xtbout.xyz -[obabel]-> input_molecule.mol2
     mol_inchi = 'mol.inchi'
     with open(mol_inchi, 'w') as outfile:
         outfile.write(f"{inchi}\n")
@@ -433,7 +411,7 @@ with ChangeDirectory(executable):
     # optimize using xtb from xtb, not from parametrizer.
     # we optimize the bad 3d structure [initial_conformer]
     logger.info("xtb optimization of 3D conformer of the molecule . . .")
-    command = f"{executable} {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
+    command = f"{executable.value} {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
     run_command(command)
     xtb_preoptimized_xyz = 'xtbopt.xyz'
     required_files = [xtb_preoptimized_xyz]
@@ -443,52 +421,59 @@ with ChangeDirectory(executable):
     xtb_preoprimized_mol2 = 'input_molecule.mol2'
     command = f"obabel -i xyz {xtb_preoptimized_xyz} -o mol2 -O {xtb_preoprimized_mol2}"
     run_command(command)
-    required_files = [xtb_preoprimized_mol2]
-    check_required_output_files_exist(required_files)
-    create_output_directory_and_copy_files(required_files)
 
-logger.info(". . . Preoptimization successful!")
+
+
+    distribute_files(executable, wf_config, diadem_dir_abs_path)
+
+logger.info(f". . . {executable.value} successful!")
 
 # 1 -> 2
-previous_executable = str(executable)  #
+previous_executable = executable  #
 
-# 2.
-executable = "QPParametrizer"  # name of the [main] entrypoint that will be run.
-with ChangeDirectory(executable):
-    # todo: copy the output directory may be a part of the context manager
-    previous_out = pathlib.Path('../') / previous_executable / 'out'
-    current_dir = pathlib.Path.cwd()
-    shutil.copytree(previous_out, current_dir, dirs_exist_ok=True)
+# 2 ##################################
+executable = executable.QPPARAMETRIZER
+######################################
 
-    command = f"{executable}"
-    source_path = f'{opt_tmpl}/QPParametrizer/parametrizer_settings.yml'
+
+with ChangeDirectory(executable.value):
+    # todo: copy the output directory may be a part of the context manager?
+
+    fetch_output_from_previous_executable(previous_executable.value)
+
+    command = f"{executable.value}"
+    source_path = f'{opt_tmpl}/{executable.value}/parametrizer_settings.yml'  # template has the name of the executable
     destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
-    copy_with_changes(source_path, changes[executable], destination_path)  # executable == calculator['configuration']!
+    copy_with_changes(source_path, changes[executable.value], destination_path)
 
     run_command(command)
 
-    # ensure the output exists
-    output_molecule_mol2_from_parametrizer = "output_molecule.mol2"
-    molecule_spf_from_parametrizer = "molecule.spf"
-    molecule_pdb_from_parametrizer = "molecule.pdb"
-    required_files = [output_molecule_mol2_from_parametrizer, molecule_spf_from_parametrizer, molecule_pdb_from_parametrizer]
-    check_required_output_files_exist(required_files)
-    create_output_directory_and_copy_files(required_files)
-if debug:
-    list_directory_contents()
-logger.info(". . . QPParametrizer successful!")
+    distribute_files(executable, wf_config, diadem_dir_abs_path)
 
-# 2->2-3
-previous_executable = str(executable)
+    # result
+    local_resultdict = wf_config.result.get(executable)
+    get_result_from.QPParametrizer(local_resultdict, 'mol_data.yml')
+    resultdict[inchiKey].update(local_resultdict)
+    with open("result.yml", 'wt') as outfile:
+        yaml.dump(local_resultdict, outfile)  # we save the result locally in QPP folder in case the script will crash on a later stage.
 
-# 3. DHP.
-logger.info("DHP starts . . .")
-executable = 'DihedralParametrizer'
+logger.info("Results after QPPP: ", result=resultdict)
+    
+logger.info(f". . . {executable.value} successful!")
 
-with ChangeDirectory(executable):
-    previous_out = pathlib.Path('../') / previous_executable / 'out'
-    current_dir = pathlib.Path.cwd()
-    shutil.copytree(previous_out, current_dir, dirs_exist_ok=True)
+
+# 2->3
+previous_executable = executable
+
+# 3. ########################################
+executable = Executable.DIHEDRAL_PARAMETRIZER
+#############################################
+
+
+logger.info(f"{executable.value} starts . . .")
+
+with ChangeDirectory(executable.value):
+    fetch_output_from_previous_executable(previous_executable.value)
 
     # 3.0. Prepare HOSTFILE
     all_avail_physical_cpus = psutil.cpu_count(logical=False)
@@ -497,8 +482,6 @@ with ChangeDirectory(executable):
     os.environ['HOSTFILE'] = hostfile_name
     generate_hostfile(numcpus, hostfile_name)
 
-    # Run add_dihedral_angles.sh
-
     # Ensure DEPTOOLS is set in the environment todo needed?
     dep_tools = os.environ.get('DEPTOOLS')
     if not dep_tools:
@@ -506,6 +489,9 @@ with ChangeDirectory(executable):
         raise EnvironmentError("DEPTOOLS environment variable is not set")
 
     # Add dihedral angles
+    output_molecule_mol2_from_parametrizer = 'output_molecule.mol2'
+    molecule_spf_from_parametrizer = 'molecule.spf'
+
     command = f"{dep_tools}/add_dihedral_angles.sh {output_molecule_mol2_from_parametrizer} {molecule_spf_from_parametrizer}"
     run_command(command)
 
@@ -514,7 +500,7 @@ with ChangeDirectory(executable):
     run_command(command)
 
     # Append mol_data.yml to output_dict.yml ### artem: why do we need this at all?
-    #command = "cat mol_data.yml >> output_dict.yml"
+    # command = "cat mol_data.yml >> output_dict.yml"  # I did not want to make this because this is bash-specific.
 
     # Convert mol2 to svg
     command = "obabel -imol2 output_molecule.mol2 -osvg"
@@ -525,7 +511,6 @@ with ChangeDirectory(executable):
 
     copy_with_changes(source_path, changes["DihedralParametrizer"], destination_path)
 
-    # ensure that the necessary files exist and their files are as expected
     output_molecule_pdb_after_add_dyhedrals = "molecule.pdb"
     output_molecule_spf_after_add_dyhedrals = "molecule.spf"
     dhp_settings = "dhp_settings.yml"
@@ -533,194 +518,209 @@ with ChangeDirectory(executable):
     required_files = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals, dhp_settings]
     check_required_output_files_exist(required_files)
 
-    # which is DHP?
-    try:
-        result = subprocess.run(['which', 'DihedralParametrizer'], check=True, stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE, encoding='utf8')
-        dihedral_parametrizer_path = result.stdout.strip()
-        logger.info(f"Found DihedralParametrizer at {dihedral_parametrizer_path}")
-    except subprocess.CalledProcessError as e:
-        logger.error("Failed to find DihedralParametrizer", error=str(e))
-        raise
+    executable_path = find_executable_path(executable.value)
 
     # Run DihedralParametrizer with MPI
-    command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {dihedral_parametrizer_path} ./dhp_settings.yml"
+    command = f"mpirun --bind-to none $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {executable_path} ./dhp_settings.yml"
     run_command(command, use_shell=True)
 
-    # Create symbolic links
-    #os.symlink('molecule.pdb', 'molecule_0.pdb')
-    #os.symlink('dihedral_forcefield.spf', 'molecule_0.spf')
+    molecule_pdb_from_DHP_as_generated = 'molecule.pdb'
+    molecule_spf_from_DHP_as_generated = 'dihedral_forcefield.spf'
+    required_files = [molecule_pdb_from_DHP_as_generated, molecule_spf_from_DHP_as_generated]
+    check_required_output_files_exist(required_files)
 
-    shutil.copy('molecule.pdb', 'molecule_0.pdb')  # deposit_init change? # todo
-    shutil.copy('dihedral_forcefield.spf', 'molecule_0.spf')  # deposit_init change? # todo
+    molecule_pdb_from_DHP = 'molecule_0.pdb'  # names recognized by Deposit as in WANO. Do not want to use others here.
+    molecule_spf_from_DHP = 'molecule_0.spf'
+    shutil.move(molecule_pdb_from_DHP_as_generated, molecule_pdb_from_DHP)
+    shutil.move(molecule_spf_from_DHP_as_generated, molecule_spf_from_DHP)
 
-logger.info(". . . DihedralParametrizer successful!")
-sys.exit()
+    distribute_files(executable, wf_config, diadem_dir_abs_path)
 
+    # no result to go into result.yml
 
+logger.info(f". . . {executable.value} successful!")
 
-# list_directory_contents()
+# 3->4
+previous_executable = executable
 
-# 4. Deposit.
-logger.info("Deposit starts . . .")
-
-# 4.0. Copy deposit_init.sh to the current dir.
-
-source_path = f'{opt_tmpl}/Deposit/deposit_init.sh'
-destination_path = './deposit_init.sh'  # Current directory
-
-# Copy deposit_init.sh.
-try:
-    shutil.copy(source_path, destination_path)
-    print(f"Copied {source_path} to {destination_path}")
-except Exception as e:
-    logger.error("Failed to copy the file", error=str(e))
-    raise
-
-# copy_with_changes(
-#     source_path, changes['Deposit'], destination_path
-# )
+# 4.###########################
+executable = Executable.DEPOSIT
+###############################
 
 
-set_env_variables_from_dict(changes['Deposit'])
+logger.info(f"{executable.value} starts . . .")
+with ChangeDirectory(executable.value):
+    fetch_output_from_previous_executable(previous_executable.value)
 
-# Generate a UUID in Python
-generated_uuid = str(uuid.uuid4())
-logger.info(f"Generated UUID: {generated_uuid}")
+    source_path = f'{opt_tmpl}/{executable.value}/deposit_cargs.yml'  # command line args of Deposit as dictionary
+    destination_path = pathlib.Path.cwd() / 'deposit_cargs.yml'
 
-# Set necessary environment variables
-env_vars = os.environ.copy()
-env_vars['GENERATED_UUID'] = generated_uuid
+    copy_with_changes(source_path, changes[executable.value], destination_path)
 
-script_path = 'deposit_init.sh'  # the way deposit is run is different
-run_shell_script(script_path, env_vars)
+    # Generate a UUID in Python
+    # todo: do we need to cd and so on??? for consistency??
+    # todo: what happens for Deposit: not only we create Deposit direcory and make sims there, we also create or use some kind of SCRATCH directory, which will not be there on Azure. Resolve?
+    generated_uuid = str(uuid.uuid4())
+    logger.info(f"Generated UUID: {generated_uuid}")
 
-# deposit_init commands -->
-# current_dir, working_dir = setup_working_directory()
-# check_and_extract_deposit_restart()
-# deposit_simulation()
-# convert_structure()
-# add_periodic_copies_deposit()
-# create_deposit_restart_zip()
-# handle_deposit_working_dir_cleanup(current_dir, working_dir)
-# # run_analysis()
-# # append_settings()
-#
-# os.chdir(current_dir)
-# <-- deposit_init commands
+    # Set necessary environment variables
+    env_vars = os.environ.copy()
+    env_vars['GENERATED_UUID'] = generated_uuid
 
-if debug:
-    list_directory_contents()
-# todo check output files.
+    # script_path = 'deposit_init.sh'  # the way deposit run is different
+    # run_shell_script(script_path, env_vars)
 
-# 5. QP.
-logger.info("QP starts . . .")
+    # deposit_init commands -->
+    current_dir, working_dir = setup_working_directory()  # this will copy things from the current to the working dir and change to it silently!!
+    check_and_extract_deposit_restart()  # not used at the moment. left to allow for script extension.
 
-# 5.0. Copy deposit_init.sh to the current dir.
+    command = build_command(destination_path)  # this is the Deposit commands with appropriate command line args
+    run_command(command)
 
-source_path = f'{opt_tmpl}/QuantumPatch/settings_ng.yml'
-destination_path = './settings_ng.yml'  # Current directory
+    required_files = ['structure.cml']
+    check_required_output_files_exist(required_files)
 
-# Copy settings_ng.yml of QP
+    command = "obabel -i cml structure.cml -o mol2 -O structure.mol2"
+    run_command(command)
 
-copy_with_changes(source_path, changes['QuantumPatch'], destination_path)
+    add_periodic_copies_deposit()
+    create_deposit_restart_zip()
+    handle_deposit_working_dir_cleanup(current_dir,
+                                       working_dir)  # this will first copy everything from work to data (current dir) and then clean up the data dir. Insane.
+    run_analysis()
+    append_settings()
+    #
+    # <-- deposit_init commands
+    distribute_files(executable, wf_config, diadem_dir_abs_path)
 
-# Generate a random directory inside the current directory
-current_dir = os.getcwd()
-scratch_dir = os.path.join(current_dir, "qp_scratch_" + next(tempfile._get_candidate_names()))
+    # result -->
+    local_resultdict = wf_config.result.get(executable)
+    get_result_from.Deposit(local_resultdict, 'DensityAnalysis.out')
+    resultdict[inchiKey].update(local_resultdict)
+    with open("result.yml", 'wt') as outfile:
+        yaml.dump(local_resultdict, outfile)
+    # <-- result
 
-# Ensure the directory exists
-os.makedirs(scratch_dir, exist_ok=True)
+logger.info(f". . . {executable.value} completed!")
 
-# Set the SCRATCH environment variable
-os.environ['SCRATCH'] = scratch_dir
 
-# Print the SCRATCH directory to verify
-logger.info(f"SCRATCH for QuantumPatch is set to: {os.environ['SCRATCH']}")
+# 4->5
+previous_executable = executable
 
-# 5.1. RUN QP
+# 5 ################################
+executable = Executable.QUANTUMPATCH
+###################################
 
-# the only necessary input for QP: structure or structurePBC is in the current folder.
+logger.info(f"{executable.value} starts . . .")
 
-# which is QP?
-try:
-    result = subprocess.run(['which', 'QuantumPatch'], check=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, encoding='utf8')
-    qp_path = result.stdout.strip()
-    logger.info(f"Found QuantumPatch at {qp_path}")
-except subprocess.CalledProcessError as e:
-    logger.error("Failed to find QuantumPatch", error=str(e))
-    raise
+with ChangeDirectory(executable.value):
+    fetch_output_from_previous_executable(previous_executable.value)
 
-os.environ['OMP_NUM_THREADS'] = '1'
+    source_path = f'{opt_tmpl}/{executable.value}/settings_ng.yml'
+    destination_path = pathlib.Path.cwd() / 'settings_ng.yml'
+    copy_with_changes(source_path, changes[executable.value], destination_path)
 
-# command = f'mpirun --bind-to none -np 30 $NMMPIARGS $ENVCOMMAND --hostfile $HOSTFILE --mca btl self,vader,tcp python -m mpi4py {qp_path}'
-command = f'mpirun --bind-to none -np 30 $NMMPIARGS $ENVCOMMAND --mca btl self,vader,tcp python -m mpi4py {qp_path}'  # todo not hard code
-run_command(command, use_shell=True)  # use or not use?
+    if 'SCRATCH' not in os.environ:
+        # Generate a random directory inside the current directory which will serve as a SCRATCH
+        current_dir = os.getcwd()
+        scratch_dir = os.path.join(current_dir, "qp_scratch_" + next(tempfile._get_candidate_names()))
+        # Ensure the directory exists
+        os.makedirs(scratch_dir, exist_ok=True)
+        # Set the SCRATCH environment variable
+        os.environ['SCRATCH'] = scratch_dir
 
-# todo check if output files are there.
+    logger.info(f"SCRATCH for QuantumPatch is set to: {os.environ['SCRATCH']}")
 
-# 5.2. Prepare input for LF
+    # 5.1. RUN QP
+    # the only necessary input for QP: structure or structurePBC is in the current folder.
+    executable_path = find_executable_path(executable.value)
 
-# Define the directory to be zipped and the name of the zip file: needed for lightforge
-directory_to_zip = "Analysis"
-zip_file_name = "QP_output_0.zip"
+    os.environ['OMP_NUM_THREADS'] = '1'
+    all_avail_physical_cpus = psutil.cpu_count(logical=False)
+    n_cpus_for_qp = changes.get('global', {}).get('ncpus', all_avail_physical_cpus)
 
-# Create a zip from Analysis of QP.
-with zipfile.ZipFile(zip_file_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
-    # Walk through the directory
-    for root, dirs, files in os.walk(directory_to_zip):
-        for file in files:
-            # Create the complete filepath of the file in the zip
-            file_path = os.path.join(root, file)
-            # Add the file to the zip file, preserving the directory structure
-            zipf.write(file_path, os.path.relpath(file_path, directory_to_zip))
+    command = f'mpirun --bind-to none -np {n_cpus_for_qp} $NMMPIARGS $ENVCOMMAND --mca btl self,vader,tcp python -m mpi4py {executable_path}'
+    run_command(command, use_shell=True)
 
-logger.info(f"Directory '{directory_to_zip}' zipped into '{zip_file_name}' successfully. This will be the LF input.")
+    required_files = ['Analysis/files_for_kmc/files_for_kmc.zip']  # todo maybe check individual files.
+    check_required_output_files_exist(required_files)
 
-# 5. Lightforge
+    # 5.2. Prepare input for LF
+    # Define the directory to be zipped and the name of the zip file: needed for lightforge
+    directory_to_zip = "Analysis"
+    required_files = wf_config.required_files.get(executable)
+    zipped_analysis_folder = "QP_output_0.zip"
 
-source_path = f'{opt_tmpl}/lightforge/settings'
-destination_path = './settings'
+    # Create a zip from Analysis of QP.
+    with zipfile.ZipFile(zipped_analysis_folder, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Walk through the directory
+        for root, dirs, files in os.walk(directory_to_zip):
+            for file in files:
+                # Create the complete filepath of the file in the zip
+                file_path = os.path.join(root, file)
+                # Add the file to the zip file, preserving the directory structure
+                zipf.write(file_path, os.path.relpath(file_path, directory_to_zip))
 
-# Copy settings of LF to the current dir
-# try:
-#     shutil.copy(source_path, destination_path)
-#     print(f"Copied {source_path} to {destination_path}")
-# except Exception as e:
-#     logger.error("Failed to copy the file", error=str(e))
-#     raise
+    logger.info(
+        f"Directory '{directory_to_zip}' zipped into '{zipped_analysis_folder}' successfully. This will be the LF input.")
+    distribute_files(executable, wf_config, diadem_dir_abs_path)
 
-copy_with_changes(source_path, changes['lightforge'], destination_path)
+logger.info(f". . . {executable.value} completed!")
 
-try:
-    result = subprocess.run(['which', 'lightforge'], check=True, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, encoding='utf8')
-    lightforge_path = result.stdout.strip()
-    logger.info(f"Found lightforge at {lightforge_path}")
-except subprocess.CalledProcessError as e:
-    logger.error("Failed to find lightforge", error=str(e))
-    raise
+# 5->6
+previous_executable = executable
 
-os.environ['OMP_NUM_THREADS'] = '1'
-command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n {numcpus} --mca btl self,vader,tcp python -m mpi4py {lightforge_path} -s settings'
-run_command(command, use_shell=True)
+# 6. #############################
+executable = Executable.LIGHTFORGE
+##################################
 
-# todo check.
 
+logger.info(f"{executable.value} starts . . .")
+with ChangeDirectory(executable.value):
+    fetch_output_from_previous_executable(previous_executable.value)
+    fetch_output_from_previous_executable(Executable.DIHEDRAL_PARAMETRIZER.value)  # yes, files from twp previous tools
+
+    source_path = f'{opt_tmpl}/{executable.value}/settings'
+    destination_path = pathlib.Path.cwd() / 'settings'
+    copy_with_changes(source_path, changes[executable.value], destination_path)
+
+    executable_path = find_executable_path(executable.value)
+
+    os.environ['OMP_NUM_THREADS'] = '1'
+    all_avail_physical_cpus = psutil.cpu_count(logical=False)
+    n_cpus_for_lf = changes.get('global', {}).get('ncpus', all_avail_physical_cpus)
+    command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n {n_cpus_for_lf} --mca btl self,vader,tcp python -m mpi4py {executable_path} -s settings'
+    run_command(command, use_shell=True)
+
+    distribute_files(executable, wf_config, diadem_dir_abs_path)
+
+    # result -->
+    local_resultdict = wf_config.result.get(executable)
+    get_result_from.lightforge(local_resultdict, 'results/experiments/current_characteristics/mobilities_all_fields.dat', 'settings')
+    resultdict[inchiKey].update(local_resultdict)
+    with open("result.yml", 'wt') as outfile:
+        yaml.dump(local_resultdict, outfile)
+    # <-- result
+
+logger.info(f". . . {executable.value} completed!")
+
+# postprocessing
+# 1. Extrapolate mobility.
 
 # Finalizing -->
-resultdict = {inchiKey: {}}  # dummy output
+# resultdict = {inchiKey: {}}  # dummy output
 
-# before we extract and write the results, we want to show what we have in the working dir after simulations are complete
+# before we extract and write the result, we want to show what we have in the working dir after simulations are complete
 
 logger.info("Listing directory contents at the end")
 list_directory_contents()
 
 #!--> dummy output
-for tag in provides:
-    resultdict[inchiKey][tag] = 0
+# for tag in provides:
+#     resultdict[inchiKey][tag] = 0
 #!<--
 
 with open("result.yml", 'wt') as outfile:
     yaml.dump(resultdict, outfile)
+
+sys.exit()
