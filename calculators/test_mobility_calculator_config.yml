@@ -1,6 +1,30 @@
 calculatorId: mobility_calculator
 files:
-- files_for_kmc.zip
+- 'mobility.png'
+- 'output_molecule.mol2'
+- 'structure.cml'
+- 'visualization_2D_and_3D.png'
+- 'summary_RDF.png'
+- 'DeltaE_*.png'
+operationFiles:
+  debugFiles:
+    - QPParametrizer_debugFiles.zip
+    - DihedralParametrizer_debugFiles.zip
+    - Deposit_debugFiles.zip
+    - QuantumPatch_debugFiles.zip
+    - lightforge_debugFiles.zip
+  errorStageOut:
+    - QPParametrizer_errorStageOut.zip
+    - DihedralParametrizer_errorStageOut.zip
+    - Deposit_errorStageOut.zip
+    - QuantumPatch_errorStageOut.zip
+    - lightforge_errorStageOut.zip
+  optionalFiles:
+    - QPParametrizer_optionalFiles.zip
+    - DihedralParametrizer_optionalFiles.zip
+    - Deposit_optionalFiles.zip
+    - QuantumPatch_optionalFiles.zip
+    - lightforge_optionalFiles.zip
 image: diadem.azurecr.io/mobility_small:0.0.1
 onDemandEnabled: true
 poolId: Standard_D4_v3
@@ -30,17 +54,17 @@ specification:
     scf_iter: 1
   Deposit:
     simparams:
-      Nmol: 100
+      Nmol: 200
       PBC: True
       sa:
-        steps: 130000
+        steps: 20000
         cycles: 30
-      postrelaxation_steps: 10000
+      postrelaxation_steps: 0
     Box:
-      Lx: 40.0
-      Ly: 40.0
-      Lz: 120.0
-      grid_overhang: 20
+      Lx: 15.0
+      Ly: 15.0
+      Lz: 50.0
+      grid_overhang: 8
   QuantumPatch:
     QuantumPatch:
       calculateJs: true
