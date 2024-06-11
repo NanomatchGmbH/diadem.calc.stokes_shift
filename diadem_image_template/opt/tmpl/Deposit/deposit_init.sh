@@ -41,8 +41,9 @@ then
     fi
 fi
 
-Deposit  molecule.0.pdb=molecule_0.pdb  molecule.0.spf=molecule_0.spf molecule.0.conc=1.0   simparams.Thi=4000.0  simparams.Tlo=300.0 simparams.sa.Tacc=5.0 simparams.sa.cycles=${UC_PROCESSORS_PER_NODE} simparams.sa.steps=13000 simparams.Nmol=500 simparams.moves.dihedralmoves=True  Box.Lx=25.0  Box.Ly=25.0  Box.Lz=90.0  Box.pbc_cutoff=10.0  simparams.PBC=True machineparams.ncpu=${UC_PROCESSORS_PER_NODE} Box.grid_overhang=30 simparams.postrelaxation_steps=1000
 
+Deposit  molecule.0.pdb=molecule_0.pdb  molecule.0.spf=molecule_0.spf molecule.0.conc=1.0   simparams.Thi=4000.0  simparams.Tlo=300.0 simparams.sa.Tacc=5.0 simparams.sa.cycles=${UC_PROCESSORS_PER_NODE} simparams.sa.steps=13000 simparams.Nmol=10 simparams.moves.dihedralmoves=True  Box.Lx=25.0  Box.Ly=25.0  Box.Lz=90.0  Box.pbc_cutoff=25.0  simparams.PBC=True machineparams.ncpu=${UC_PROCESSORS_PER_NODE} Box.grid_overhang=30 simparams.postrelaxation_steps=1000
+#Deposit  molecule.0.pdb=molecule_0.pdb  molecule.0.spf=molecule_0.spf molecule.0.conc=1.0   simparams.Thi=4000.0  simparams.Tlo=300.0 simparams.sa.Tacc=5.0 simparams.sa.cycles=${UC_PROCESSORS_PER_NODE} simparams.sa.steps=${simparams.sa.steps} simparams.Nmol=${simparams.Nmol} simparams.moves.dihedralmoves=True  Box.Lx=${Box.Lx}  Box.Ly=${Box.Ly}  Box.Lz=${Box.Lz}  Box.pbc_cutoff=10.0  simparams.PBC=${simparams.PBC} machineparams.ncpu=${UC_PROCESSORS_PER_NODE} Box.grid_overhang=${Box.grid_overhang} simparams.postrelaxation_steps=${simparams.postrelaxation_steps}
 
 obabel structure.cml -O structure.mol2
 
