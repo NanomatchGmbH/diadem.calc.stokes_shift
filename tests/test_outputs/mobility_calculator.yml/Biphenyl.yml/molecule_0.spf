@@ -1,0 +1,274 @@
+parametrization_info:
+  internal_coulomb: true
+  internal_sixten: true
+residues:
+  F6L:
+    atoms:
+      C:
+        charge: 0.023555306209504856
+        charge_internal: 0.03532702904621916
+        epsilon: 0.1505736138
+        epsilon_internal: 0.16388613332737817
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5888965646829014
+      C1:
+        charge: 0.021469502380359273
+        charge_internal: 0.032202784856977106
+        epsilon: 0.1505736138
+        epsilon_internal: 0.15577159503470023
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5977994664986666
+      C10:
+        charge: 0.07685723283083945
+        charge_internal: 0.08412889402790472
+        epsilon: 0.1505736138
+        epsilon_internal: 0.1973183729922367
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.6078578066361833
+      C11:
+        charge: 0.07346091730932436
+        charge_internal: 0.09170287893663241
+        epsilon: 0.1505736138
+        epsilon_internal: 0.15089529595577378
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.6074280714717615
+      C2:
+        charge: 0.02270574774969969
+        charge_internal: 0.033871838732247264
+        epsilon: 0.1505736138
+        epsilon_internal: 0.1801515360811522
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5979722038731943
+      C3:
+        charge: 0.02058112956618796
+        charge_internal: 0.030871694349281942
+        epsilon: 0.1505736138
+        epsilon_internal: 0.180939542644545
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5810067475396212
+      C4:
+        charge: 0.023256509672064496
+        charge_internal: 0.03485903453363965
+        epsilon: 0.1505736138
+        epsilon_internal: 0.17314318880077154
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5690757405946023
+      C5:
+        charge: 0.022214037073278625
+        charge_internal: 0.03323275633692646
+        epsilon: 0.1505736138
+        epsilon_internal: 0.1643323816912614
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.588272911551508
+      C6:
+        charge: -0.021691517776584845
+        charge_internal: -0.01090432378988708
+        epsilon: 0.1505736138
+        epsilon_internal: 0.17336820620264656
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.6046527566878765
+      C7:
+        charge: -0.021505908606659574
+        charge_internal: -0.010752954303329787
+        epsilon: 0.1505736138
+        epsilon_internal: 0.17935342457678952
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5777082504823685
+      C8:
+        charge: -0.01970858962550892
+        charge_internal: -0.00985429481275446
+        epsilon: 0.1505736138
+        epsilon_internal: 0.19301283285546353
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.593520590944171
+      C9:
+        charge: -0.019136280790488236
+        charge_internal: -0.012009147160794776
+        epsilon: 0.1505736138
+        epsilon_internal: 0.17600493571117215
+        mol2_atom_type: C.ar
+        sigma: 3.56
+        sigma_internal: 3.5739295528620882
+      H:
+        charge: -0.016407621678829365
+        charge_internal: -0.008209029691790454
+        epsilon: 0.0191204589
+        epsilon_internal: 0.02868063085213534
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.8204962521207664
+      H1:
+        charge: -0.016455772359458276
+        charge_internal: -0.008229294989804977
+        epsilon: 0.0191204589
+        epsilon_internal: 0.0286806841527708
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.7930680177643432
+      H2:
+        charge: -0.01792540707015866
+        charge_internal: -0.009226103007934269
+        epsilon: 0.0191204589
+        epsilon_internal: 0.02317084840064302
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.7838774661986214
+      H3:
+        charge: -0.018394209358117086
+        charge_internal: -0.01788507487003313
+        epsilon: 0.0191204589
+        epsilon_internal: 0.028637780927561897
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.797627749724491
+      H4:
+        charge: -0.01814502438382748
+        charge_internal: -0.0176319438898747
+        epsilon: 0.0191204589
+        epsilon_internal: 0.028636205843130574
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.8042895671901749
+      H5:
+        charge: -0.018018147880350943
+        charge_internal: -0.009156350913939681
+        epsilon: 0.0191204589
+        epsilon_internal: 0.028636620516098422
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.7916784012006115
+      H6:
+        charge: -0.02465168594807743
+        charge_internal: -0.01510335198802424
+        epsilon: 0.0191204589
+        epsilon_internal: 0.02610645867231869
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.823693049233765
+      H7:
+        charge: -0.023700878988133667
+        charge_internal: -0.01301930563689049
+        epsilon: 0.0191204589
+        epsilon_internal: 0.028680688350000004
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.807614859641225
+      H8:
+        charge: -0.02408063089489776
+        charge_internal: -0.023980771136017365
+        epsilon: 0.0191204589
+        epsilon_internal: 0.028680688350000004
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.8075119208465447
+      H9:
+        charge: -0.02427870743017113
+        charge_internal: -0.01360433056122383
+        epsilon: 0.0191204589
+        epsilon_internal: 0.028680688350000004
+        mol2_atom_type: H
+        sigma: 1.78
+        sigma_internal: 1.794282978000644
+    bonds:
+    - - H5
+      - C5
+      - '1'
+    - - H9
+      - C9
+      - '1'
+    - - C5
+      - C9
+      - ar
+    - - C5
+      - C1
+      - ar
+    - - C9
+      - C11
+      - ar
+    - - H1
+      - C1
+      - '1'
+    - - C1
+      - C4
+      - ar
+    - - H6
+      - C6
+      - '1'
+    - - C6
+      - C2
+      - ar
+    - - C6
+      - C10
+      - ar
+    - - H2
+      - C2
+      - '1'
+    - - C11
+      - C10
+      - '1'
+    - - C11
+      - C8
+      - ar
+    - - C2
+      - C
+      - ar
+    - - C10
+      - C7
+      - ar
+    - - C
+      - H
+      - '1'
+    - - C
+      - C3
+      - ar
+    - - C7
+      - C3
+      - ar
+    - - C7
+      - H7
+      - '1'
+    - - C3
+      - H3
+      - '1'
+    - - C4
+      - C8
+      - ar
+    - - C4
+      - H4
+      - '1'
+    - - C8
+      - H8
+      - '1'
+    dihedrals:
+      C7.C10.C11.C8:
+        spline:
+        - -2.493736054091369
+        - 3.7894492530882173
+        - 1.5707963267948966
+        - 0.0
+        - 0.8829108792280589
+        - 0.0008311302116273676
+        - 0.8823206258580846
+        - 8.380308509650112e-10
+    moves:
+      dihedral:
+      - - - C7
+          - C10
+          - C11
+          - C8
+        - single
+structure:
+  bonds: []
+  moves: {}
+  parameters: {}

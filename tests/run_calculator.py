@@ -66,17 +66,17 @@ def run_calculations(molecule: pathlib.Path, calculator: pathlib.Path, image_nam
     else:
         logging.error("Did not find log.txt")
 
-    optional_files_to_get_back = [
-        'molecule_0.spf', 'molecule_0.pdb', 'deposit_init.sh',
-        'structure.cml', 'Analysis/files_for_kmc/files_for_kmc.zip'
-    ]
-
-    for filename in optional_files_to_get_back:
-        file_path = tmpdir / filename
-        if file_path.is_file():
-            shutil.copy(file_path, output_directory / filename)
-        else:
-            logging.warning(f"File {filename} not found")
+    # optional_files_to_get_back = [
+    #     'molecule_0.spf', 'molecule_0.pdb', 'deposit_init.sh',
+    #     'structure.cml', 'Analysis/files_for_kmc/files_for_kmc.zip'
+    # ]
+    #
+    # for filename in optional_files_to_get_back:
+    #     file_path = tmpdir / filename
+    #     if file_path.is_file():
+    #         shutil.copy(file_path, output_directory / filename)
+    #     else:
+    #         logging.warning(f"File {filename} not found")
 
     resultfile = tmpdir / "result.yml"
     if resultfile.is_file():

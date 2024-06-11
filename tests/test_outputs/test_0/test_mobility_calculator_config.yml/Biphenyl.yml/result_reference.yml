@@ -1,0 +1,76 @@
+ZUOUZKKEUPVFJK-UHFFFAOYSA-N:
+  HOMO:
+    value: -6.304540838149297
+  LUMO:
+    value: -0.9858224692305615
+  dipole:
+    value:
+    - -1.3519963649797778e-05
+    - 3.118055207235823e-06
+    - 1.662537895194092e-05
+  mobility:
+    results:
+      fields:
+        units: V/nm
+        values:
+        - 0.2
+        - 0.3
+        - 0.4
+      mobilities:
+        units: "cm\xB2/V\xB7s"
+        values:
+        - 0.000600188736252358
+        - 0.0008758932989052428
+        - 0.001706309452679829
+      stderr:
+        units: "cm\xB2/V\xB7s"
+        values:
+        - !!python/object/apply:numpy.core.multiarray.scalar
+          - &id001 !!python/object/apply:numpy.dtype
+            args:
+            - f8
+            - false
+            - true
+            state: !!python/tuple
+            - 3
+            - <
+            - null
+            - null
+            - null
+            - -1
+            - -1
+            - 0
+          - !!binary |
+            UnyMQdyiHT8=
+        - !!python/object/apply:numpy.core.multiarray.scalar
+          - *id001
+          - !!binary |
+            eGk1/CFSFz8=
+        - !!python/object/apply:numpy.core.multiarray.scalar
+          - *id001
+          - !!binary |
+            Elv5Oz2XHz8=
+    value: !!python/object/apply:numpy.core.multiarray.scalar
+    - *id001
+    - !!binary |
+      W7/XFB94CD8=
+  morphology:
+    results:
+      average_neighbors:
+        unit: Angstrom
+        value: 16.1
+      mass_density:
+        std: 0.01
+        unit: g/cm3
+        value: 1.12
+      molecular_volume:
+        unit: nm3
+        value: 0.23
+      number_density:
+        std: 1.62e+20
+        unit: 1/cm3
+        value: 4.39e+21
+      rdf_first_peak:
+        unit: Angstrom
+        value: 4.7335423197492155
+    value: 'file: structure.cml'
