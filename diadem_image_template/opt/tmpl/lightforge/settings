@@ -46,9 +46,9 @@ experiments:
   field_strength: 0.02 0.03 0.04
   initial_holes: 30
 
-iv_fluctuation: 0.05
+iv_fluctuation: 0.001
 new_wano: True
-max_iterations: 500000
+max_iterations: 10000000
 ti_prune: True
 
 live_reporting:
