@@ -1,6 +1,6 @@
 calculatorId: mobility_calculator
 files:
-- 'mobility.png'
+- 'mobility_vs_sqrt_field.png'
 - 'output_molecule.mol2'
 - 'structure.cml'
 - 'visualization_2D_and_3D.png'
