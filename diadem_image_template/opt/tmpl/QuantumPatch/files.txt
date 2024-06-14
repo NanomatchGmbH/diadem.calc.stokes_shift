@@ -1,1 +1,1 @@
-Analysis/energy/DeltaE_*.png
+Analysis/energy/DeltaE.png
