@@ -36,6 +36,9 @@ from utils.deposit_functions import setup_working_directory, check_and_extract_d
     add_periodic_copies_deposit, create_deposit_restart_zip, handle_deposit_working_dir_cleanup, run_analysis, \
     append_settings
 from utils.result import get_result_from
+from utils.context_managers import ChangeDirectory
+from utils.lightforge_functions import set_carrier_type
+from utils.quantumpatch_functions import rename_file
 
 debug = False
 opt_tmpl = "/opt/tmpl"
@@ -92,29 +95,6 @@ def check_required_output_files_exist(filepaths, description="file"):
         logger.critical(f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
         raise FileNotFoundError(
             f"Required {description}(s) missing in current working directory: {', '.join(missing_files)}")
-
-
-class ChangeDirectory:
-    """
-    Context manager for creating and changing the current working directory to a simulations directory.
-    """
-
-    def __init__(self, dir_name):
-        self.new_path = pathlib.Path.cwd() / dir_name
-        self.original_path = pathlib.Path.cwd()
-        self.dir_name = dir_name
-
-    def __enter__(self):
-        logger.info(f"{self.dir_name} starts . . .")
-        self.new_path.mkdir(exist_ok=True)
-        os.chdir(self.new_path)
-        logger.info(f"Changed directory to {self.new_path}")
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        os.chdir(self.original_path)
-        logger.info(f". . . {self.dir_name} successful!")
-        logger.info(f"Returned to original directory {self.original_path}")
 
 
 def create_output_directory_and_copy_files(required_files, output_dir='out'):
@@ -207,12 +187,17 @@ class Executable(Enum):
     DIHEDRAL_PARAMETRIZER = 'DihedralParametrizer'
     QUANTUMPATCH = 'QuantumPatch'
     DEPOSIT = 'Deposit'
-    LIGHTFORGE = 'lightforge'
+    LIGHTFORGE_HOLE = 'lightforge_hole'
+    LIGHTFORGE_ELECTRON = 'lightforge_electron'
 
 
 # Define the WorkflowConfig dataclass with an extended constructor
 @dataclass
 class WorkflowConfig:
+    """
+    data associated with every Executable is all here.
+    By default, the data is constructed from files in: /opt/tmpl/<Executable.value>/
+    """
     required_files: Dict[Executable, List[str]] = field(default_factory=dict)
     files: Dict[Executable, List[str]] = field(default_factory=dict)
     debugFiles: Dict[Executable, List[str]] = field(default_factory=dict)
@@ -368,7 +353,25 @@ for executable in Executable:
 
 #####
 
-# Ensure that the script knows where to take the files specified in the calculator. Otherwise, it makes to sense to proceed. -->
+"""
+Ensure that the script knows where to locate the files specified in the calculator. Otherwise, it makes no sense to proceed.
+This block performs a critical check to ensure consistency between the files required by the calculator and the files produced by various executables.
+
+The files specified in the calculator must match the BASE names of the files listed in the files.txt files for each executable. This is crucial because:
+1. It establishes a clear relationship between the files and the executables that produce them.
+2. The calculator specifies files by their base names, while the files listed in /opt/tmpl/<Exe>/files.txt include the relative paths from the current executable's directory to the file.
+
+Example:
+If the calculator specifies a file as 'output_file.txt', the corresponding entry in /opt/tmpl/<Exe>/files.txt might be '/path/to/output_file.txt'.
+
+This block compares the sets of files to ensure that:
+1. Every file required by the calculator has a corresponding entry in the files produced by the executables.
+2. Every file listed in the files.txt files has a corresponding entry in the calculator.
+
+If there are discrepancies, the script logs the specific missing or extra files and terminates execution to prevent further errors.
+"""
+
+
 def files_names_with_specified_locations(fls):
     file_names = []
     for paths in fls.values():
@@ -382,12 +385,23 @@ files_from_locations = files_names_with_specified_locations(wf_config.files)
 files_from_calculator = files
 
 if set(files_from_locations) != set(files_from_calculator):
+    missing_files = set(files_from_calculator) - set(files_from_locations)
+    extra_files = set(files_from_locations) - set(files_from_calculator)
+
     logger.critical(f"The calculator needs to know where to look for the following files: {files_from_calculator}. "
-                    f"However, paths are only specified for the following files: {files_from_locations}. "
-                    f"Exiting...")
-    sys.exit()
+                    f"However, paths are only specified for the following files: {files_from_locations}. ")
+
+    if missing_files:
+        logger.critical(
+            f"Missing files that are specified in the calculator but not in the file locations: {missing_files}")
+
+    if extra_files:
+        logger.critical(f"Extra files that have paths specified but are not required by the calculator: {extra_files}")
+
+    sys.exit("Exiting due to mismatched files.")
 else:
-    logger.info("Sanity Check Successful: The Calculator knows paths to the files that have to be returned.")
+    logger.info("Sanity Check Successful: The Calculator knows paths to the [diadem] files that have to be returned.")
+
 # <--
 
 
@@ -443,7 +457,6 @@ except Exception as e:
 # 1 -> 2
 previous_executable = executable  #
 
-
 # 2 ##################################
 executable = executable.QPPARAMETRIZER
 ######################################
@@ -476,10 +489,8 @@ except Exception as e:
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
-
 # 2->3
 previous_executable = executable
-
 
 # 3. ########################################
 executable = Executable.DIHEDRAL_PARAMETRIZER
@@ -530,7 +541,8 @@ try:
         output_molecule_spf_after_add_dyhedrals = "molecule.spf"
         dhp_settings = "dhp_settings.yml"
 
-        required_files = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals, dhp_settings]
+        required_files = [output_molecule_pdb_after_add_dyhedrals, output_molecule_spf_after_add_dyhedrals,
+                          dhp_settings]
         check_required_output_files_exist(required_files)
 
         executable_path = find_executable_path(executable.value)
@@ -559,7 +571,6 @@ except Exception as e:
 
 # 3->4
 previous_executable = executable
-
 
 # 4.###########################
 executable = Executable.DEPOSIT
@@ -625,7 +636,6 @@ except Exception as e:
 # 4->5
 previous_executable = executable
 
-
 # 5 ################################
 executable = Executable.QUANTUMPATCH
 ###################################
@@ -681,54 +691,61 @@ try:
 
         logger.info(
             f"Directory '{directory_to_zip}' zipped into '{zipped_analysis_folder}' successfully. This will be the LF input.")
+
+        # workaround deltaE_*.png --> deltaE.png:
+        rename_file('Analysis/energy/DeltaE*.png', 'DeltaE.png')
+        
         distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
 except Exception as e:
     logger.error(f"An error occurred during {executable.value} processing: {e}")
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
-
-logger.info(f". . . {executable.value} completed!")
+sys.exit()
 
 # 5->6
 previous_executable = executable
 
-# 6. #############################
-executable = Executable.LIGHTFORGE
-##################################
 
-try:
-    with ChangeDirectory(executable.value):
-        fetch_output_from_previous_executable(previous_executable.value)
-        fetch_output_from_previous_executable(Executable.DIHEDRAL_PARAMETRIZER.value)  # yes, files from twp previous tools
+# 6. ##########################################################################
+for executable in [Executable.LIGHTFORGE_HOLE, Executable.LIGHTFORGE_ELECTRON]:
+###############################################################################
+    try:
+        with ChangeDirectory(executable.value):
+            fetch_output_from_previous_executable(previous_executable.value)
+            fetch_output_from_previous_executable(
+                Executable.DIHEDRAL_PARAMETRIZER.value)  # yes, files from twp previous tools
 
-        source_path = f'{opt_tmpl}/{executable.value}/settings'
-        destination_path = pathlib.Path.cwd() / 'settings'
-        copy_with_changes(source_path, changes[executable.value], destination_path)
+            source_path = f'{opt_tmpl}/{executable.value}/settings'  # settings specific to hole/electron
+            destination_path = pathlib.Path.cwd() / 'settings'
+            copy_with_changes(source_path, changes[executable.value], destination_path)
 
-        executable_path = find_executable_path(executable.value)
+            executable_path = find_executable_path(executable.value.split('_')[0])  # returns simply lightforge for both hole and electron.
+            carrier_type = executable.value.split('_')[1]  # hole or electron
 
-        os.environ['OMP_NUM_THREADS'] = '1'
-        all_avail_physical_cpus = psutil.cpu_count(logical=False)
-        n_cpus_for_lf = changes.get('global', {}).get('ncpus', all_avail_physical_cpus)
-        command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n {n_cpus_for_lf} --mca btl self,vader,tcp python -m mpi4py {executable_path} -s settings'
-        run_command(command, use_shell=True)
+            os.environ['OMP_NUM_THREADS'] = '1'
+            all_avail_physical_cpus = psutil.cpu_count(logical=False)
+            n_cpus_for_lf = changes.get('global', {}).get('ncpus', all_avail_physical_cpus)
+            command = f'mpirun -x OMP_NUM_THREADS --bind-to none -n {n_cpus_for_lf} --mca btl self,vader,tcp python -m mpi4py {executable_path} -s settings'
+            run_command(command, use_shell=True)
 
-        # result -->
-        local_resultdict = wf_config.result.get(executable)
-        get_result_from.lightforge(local_resultdict,
-                                   'results/experiments/current_characteristics/mobilities_all_fields.dat', 'settings')
-        # the side-effect of the get_result_from.lighforge is creating file mobility_vs_sqrt_field.png.
-        resultdict[inchiKey].update(local_resultdict)
-        with open("result.yml", 'wt') as outfile:  # this dict is inside the lightforge simulation folder.
-            yaml.dump(local_resultdict, outfile)
-        # <-- result
+            # result -->
+            local_resultdict = wf_config.result.get(executable)
+            get_result_from.lightforge(local_resultdict,
+                                       'results/experiments/current_characteristics/mobilities_all_fields.dat', 'settings',
+                                       hole_or_electron=carrier_type)
 
-        distribute_files(executable, wf_config, diadem_dir_abs_path)
-except Exception as e:
-    logger.error(f"An error occurred during {executable.value} processing: {e}")
-    distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
-    sys.exit(1)
+            # the side-effect of the get_result_from.lighforge is creating file mobility_vs_sqrt_field_<hole/electron>.png which will be copied as file to the front-end!!!
+            resultdict[inchiKey].update(local_resultdict)
+            with open("result.yml", 'wt') as outfile:  # this dict is inside the lightforge simulation folder.
+                yaml.dump(local_resultdict, outfile)
+            # <-- result
+
+            distribute_files(executable, wf_config, diadem_dir_abs_path)
+    except Exception as e:
+        logger.error(f"An error occurred during {executable.value} processing: {e}")
+        distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
+        sys.exit(1)
 
 # resultdict will be filled in after every workflow step.
 # if the workflow succeed, resultdict is complete.
