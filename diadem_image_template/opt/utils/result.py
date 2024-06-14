@@ -83,8 +83,8 @@ class get_result_from:
     @staticmethod
     def lightforge(local_result: Dict[str, Any], mobilities_file: str, settings_file: str, hole_or_electron: str) -> None:
 
-        if hole_or_electron is not 'hole' and not 'electron':
-            sys.exit(f'hole_or_electron may be either hole or electron. It is: f{hole_or_electron}. Existing . . . ')
+        if hole_or_electron not in ['hole', 'electron']:
+            sys.exit(f'hole_or_electron may be either "hole" or "electron". It is: {hole_or_electron}. Exiting . . . ')
 
         # Read data from mobilities_all_fields.dat
         fields = []
