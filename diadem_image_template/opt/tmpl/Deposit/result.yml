@@ -1,0 +1,20 @@
+morphology:
+  value: "file: structure.cml"
+  results:
+    mass_density:
+      value: null
+      unit: "g/cm3"
+      std: null
+    number_density:
+      value: null
+      unit: "1/cm3"
+      std: null
+    molecular_volume:
+      value: null
+      unit: "nm3"
+    rdf_first_peak:
+      value: null
+      unit: "Angstrom"
+    average_neighbors:
+      value: null
+      unit: "Angstrom"

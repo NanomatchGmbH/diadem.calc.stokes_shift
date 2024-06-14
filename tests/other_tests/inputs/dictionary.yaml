@@ -1,5 +1,5 @@
 DFT Engine:
-  Engine: PySCF
+  Engine: Psi4
   Memory (MB): 16000.0
   Threads: '4'
   DFTB+ Settings:
@@ -11,7 +11,7 @@ DFT Engine:
     Functional: B3LYP
     Geometry Convergence: normal
     Partial Charge Method: ESP
-    Preoptimization: DFTB
+    Preoptimization: None
     SCF Convergence: fast
   PySCF Settings:
     basis: def2-SVP

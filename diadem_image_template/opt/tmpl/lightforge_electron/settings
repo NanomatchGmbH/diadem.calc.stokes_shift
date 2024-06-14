@@ -1,0 +1,58 @@
+pbc: [True, True, True]
+expansion_scheme: edcm
+
+particles:
+ holes: False
+ electrons: True
+ excitons: False
+
+morphology_width: 40
+
+QP_output_files:
+- name: molA
+  QP_output.zip: QP_output_0.zip
+
+materials:
+- name: htl
+  input_mode_transport: "QP: sig PAR: eaip,l"
+  molecule_parameters:
+    molecule_pdb: molecule_0.pdb
+    QP_output_sigma: molA
+    energies:
+    - [5.0, 2.0]
+    - [0.2, 0.2]
+
+layers:
+- thickness: 40
+  morphology_input_mode: automatic
+  molecule_species:
+  - material: htl
+    concentration: 1.0
+
+neighbours: 120
+transfer_integral_source: QP_output
+superexchange: True
+
+pair_input:
+ - molecule 1: htl
+   molecule 2: htl
+   QP_output:  molA
+
+experiments:
+- simulations: 10
+  measurement: DC
+  Temperature: 300
+  field_direction: [1, 0, 0]
+  field_strength: 0.02 0.03 0.04
+  initial_electrons: 30
+
+iv_fluctuation: 0.001
+new_wano: True
+max_iterations: 10000000
+ti_prune: True
+
+live_reporting:
+  reporting_time_interval: 15
+  IV: False
+  density: False
+

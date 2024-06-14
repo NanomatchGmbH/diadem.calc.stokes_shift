@@ -1,8 +1,8 @@
-FROM mambaorg/micromamba:1.3.1
+FROM mambaorg/micromamba:latest
 
 # We copy over the lockfile and install:
-COPY --chown=$MAMBA_USER:$MAMBA_USER env.lock /tmp/env.lock
-RUN micromamba install --name base --yes --file /tmp/env.lock && \
+COPY --chown=$MAMBA_USER:$MAMBA_USER conda-lock.yml /tmp/conda-lock.yml
+RUN micromamba install --name base --yes --file /tmp/conda-lock.yml && \
     micromamba clean --all --yes
 
 # We also copy over the prepared local opt folder:

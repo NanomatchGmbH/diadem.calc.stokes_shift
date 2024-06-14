@@ -1,0 +1,48 @@
+computing density for cuts 9.61 7.91 9.34: 1.1168705941 g/cm3
+computing density for cuts 9.61 7.91 9.34: 4.394E+21 1/cm3
+computing density for cuts 9.34 6.38 8.59: 1.1286769671 g/cm3
+computing density for cuts 9.34 6.38 8.59: 4.335E+21 1/cm3
+computing density for cuts 9.53 9.04 9.00: 1.1198968237 g/cm3
+computing density for cuts 9.53 9.04 9.00: 4.077E+21 1/cm3
+computing density for cuts 9.24 7.94 8.57: 1.1151095675 g/cm3
+computing density for cuts 9.24 7.94 8.57: 4.380E+21 1/cm3
+computing density for cuts 7.56 8.57 9.95: 1.1479646161 g/cm3
+computing density for cuts 7.56 8.57 9.95: 4.315E+21 1/cm3
+computing density for cuts 6.64 6.95 8.39: 1.1409281781 g/cm3
+computing density for cuts 6.64 6.95 8.39: 4.355E+21 1/cm3
+computing density for cuts 6.81 7.68 9.69: 1.1380400606 g/cm3
+computing density for cuts 6.81 7.68 9.69: 4.516E+21 1/cm3
+computing density for cuts 9.14 8.05 8.61: 1.1158672305 g/cm3
+computing density for cuts 9.14 8.05 8.61: 4.320E+21 1/cm3
+computing density for cuts 5.95 6.42 8.74: 1.1415506701 g/cm3
+computing density for cuts 5.95 6.42 8.74: 4.485E+21 1/cm3
+computing density for cuts 8.23 8.17 9.51: 1.1279735626 g/cm3
+computing density for cuts 8.23 8.17 9.51: 4.565E+21 1/cm3
+computing density for cuts 6.07 8.96 9.30: 1.1384376799 g/cm3
+computing density for cuts 6.07 8.96 9.30: 4.419E+21 1/cm3
+computing density for cuts 9.27 7.15 9.26: 1.1278931262 g/cm3
+computing density for cuts 9.27 7.15 9.26: 4.252E+21 1/cm3
+computing density for cuts 8.43 7.82 8.74: 1.1193770519 g/cm3
+computing density for cuts 8.43 7.82 8.74: 4.733E+21 1/cm3
+computing density for cuts 6.32 9.94 9.46: 1.1442099920 g/cm3
+computing density for cuts 6.32 9.94 9.46: 4.285E+21 1/cm3
+computing density for cuts 8.91 9.76 8.46: 1.1372485848 g/cm3
+computing density for cuts 8.91 9.76 8.46: 4.297E+21 1/cm3
+computing density for cuts 6.78 9.28 8.82: 1.1383473551 g/cm3
+computing density for cuts 6.78 9.28 8.82: 4.239E+21 1/cm3
+computing density for cuts 6.62 7.42 8.71: 1.1446414615 g/cm3
+computing density for cuts 6.62 7.42 8.71: 4.407E+21 1/cm3
+computing density for cuts 7.64 7.73 8.84: 1.1302525212 g/cm3
+computing density for cuts 7.64 7.73 8.84: 4.491E+21 1/cm3
+computing density for cuts 8.67 8.52 8.65: 1.1372094190 g/cm3
+computing density for cuts 8.67 8.52 8.65: 4.570E+21 1/cm3
+computing density for cuts 7.24 5.92 9.91: 1.1551618450 g/cm3
+computing density for cuts 7.24 5.92 9.91: 4.538E+21 1/cm3
+box density avg over 20 samples: 1.13 +. 0.01
+box density avg over 20 samples: 4.40E+21 + 1.43E+20
+molecular volume in nm3: 0.23
+Do RDF
+Distance 29.3354 was far away from the expected integer distance of 29. Please investigate.
+X box dimension and Y box dimension were different, i.e. 30 != 29. Check if this is actually the case.
+First peak in RDF: 5.297805642633229
+Avergae neighbors of 80d0 around central 80d0: 19.8

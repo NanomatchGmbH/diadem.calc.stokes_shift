@@ -16,7 +16,7 @@ if [[ ! "$VERSION" =~ ^$NAME:* ]]; then
 fi
 
 echo "Building image $VERSION"
-docker build  --tag $VERSION .
+docker build --ulimit nofile=262144:262144 --tag $VERSION .
 
 docker tag $VERSION diadem.azurecr.io/$VERSION
 echo "You can now push this image by logging in to azure with the supplied info by NM"

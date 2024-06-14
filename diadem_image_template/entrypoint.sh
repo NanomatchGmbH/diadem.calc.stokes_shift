@@ -3,22 +3,14 @@
 # This file will start automatically in your docker run. You can assume the presence of a 
 # molecule.yml and a calculator.yml in the work directory.
 
-#ncpus=`./get_num_cpu.sh` # return number of physical cpus. for test only? DOES NOT WORK SO FAR
-
-ncpus=4
+# Get the number of CPUs (if needed, replace this logic with your actual CPU detection script)
+ncpus=30
 
 export OMP_NUM_THREADS=${ncpus}
-
 export UC_PROCESSORS_PER_NODE=${ncpus}
-
-#echo ${ncpus}
-
 export NM_LICENSE_SERVER=123.123.123.123
 
 python /opt/get_mobility.py
-
-bash deposit_init.sh >> log.txt 2>&1
-
 
 # Make sure that after this script finishes a result.yml exists.
 # The workdir_bundle.tar.gz will also be staged out for debugging purposes, if you create it. 

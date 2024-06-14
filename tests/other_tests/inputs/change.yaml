@@ -1,0 +1,6 @@
+DFT Engine:
+  Threads: '30'
+  Engine: Psi4
+  Memory (MB): 78000.0
+  PySCF Settings:
+    basis: def2-SVP

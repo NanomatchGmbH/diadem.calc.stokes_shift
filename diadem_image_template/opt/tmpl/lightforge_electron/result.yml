@@ -1,0 +1,12 @@
+electron_mobility:
+  value: null
+  results:
+    fields:
+      values: []
+      units: 'V/nm'
+    mobilities:
+      values: []
+      units: 'cm2/V*s'
+    stderr:
+      values: []
+      units: 'cm2/V*s'
