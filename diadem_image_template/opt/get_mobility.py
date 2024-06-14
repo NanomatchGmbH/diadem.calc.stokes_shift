@@ -701,8 +701,6 @@ except Exception as e:
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
-sys.exit()
-
 # 5->6
 previous_executable = executable
 
