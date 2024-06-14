@@ -1,13 +1,16 @@
 """
 helper function to write output files and extract relevant information into results.yml format.
 """
-from typing import Any, Dict
+import sys
+from typing import Any, Dict, List
 
 import yaml
 import re
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
+import math
+
 
 class get_result_from:
     @staticmethod
@@ -16,6 +19,10 @@ class get_result_from:
         yaml_file: mol_data.yml, QPParametrizer output.
         data_dict: template result.ynl from /opt/tmpl/ folders.
         """
+
+        def get_dipole_value_from_vector(vector_dipole: List):
+            return float(np.sqrt(vector_dipole[0] ** 2 + vector_dipole[1] ** 2 + vector_dipole[2] ** 2))
+
         with open(yaml_file, 'r') as file:
             yaml_data = yaml.safe_load(file)
 
@@ -26,7 +33,9 @@ class get_result_from:
             local_result['LUMO']['value'] = yaml_data['lumo energy']
 
         if 'dipole' in yaml_data:
-            local_result['dipole']['value'] = yaml_data['dipole']
+            dipole_value = get_dipole_value_from_vector(yaml_data['dipole'])
+            local_result['dipole']['value'] = dipole_value
+            local_result['dipole']['results']['dipole_vector'] = yaml_data['dipole']
 
     @staticmethod
     def Deposit(local_result: Dict[str, Any], filepath: str) -> None:
@@ -35,7 +44,8 @@ class get_result_from:
 
         # More relaxed regular expression to match the desired patterns
 
-        box_density_pattern = re.compile(r'box density avg over 20 samples:\s*([\d.]+(?:[eE][+-]?\d+)?)\s.*?\s([\d.]+(?:[eE][+-]?\d+)?)')  # output style of DensityAnalysis is error prone and hard to parse.
+        box_density_pattern = re.compile(
+            r'box density avg over 20 samples:\s*([\d.]+(?:[eE][+-]?\d+)?)\s.*?\s([\d.]+(?:[eE][+-]?\d+)?)')  # output style of DensityAnalysis is error prone and hard to parse.
 
         volume_pattern = re.compile(r'molecular volume in nm3: ([\d.]+)')
         rdf_peak_pattern = re.compile(r'First peak in RDF: ([\d.]+)')
@@ -71,7 +81,11 @@ class get_result_from:
             local_result["morphology"]["results"]["average_neighbors"]["value"] = float(neighbors_match.group(1))
 
     @staticmethod
-    def lightforge(local_result: Dict[str, Any], mobilities_file: str, settings_file: str) -> None:
+    def lightforge(local_result: Dict[str, Any], mobilities_file: str, settings_file: str, hole_or_electron: str) -> None:
+
+        if hole_or_electron is not 'hole' and not 'electron':
+            sys.exit(f'hole_or_electron may be either hole or electron. It is: f{hole_or_electron}. Existing . . . ')
+
         # Read data from mobilities_all_fields.dat
         fields = []
         mobilities = []
@@ -90,12 +104,15 @@ class get_result_from:
             num_samples = settings['experiments'][0]['simulations']
 
         # Fill in the local_result dictionary
-        local_result["mobility"]["results"]["fields"]["values"] = list(fields)
-        local_result["mobility"]["results"]["mobilities"]["values"] = list(mobilities)
+
+        hole_or_electron_mobility = f'{hole_or_electron}_mobility'
+
+        local_result[hole_or_electron_mobility]["results"]["fields"]["values"] = list(fields)
+        local_result[hole_or_electron_mobility]["results"]["mobilities"]["values"] = list(mobilities)
 
         # Calculate standard error
         stderr_values = [float(std / np.sqrt(num_samples)) for std in stderrs]
-        local_result["mobility"]["results"]["stderr"]["values"] = list(stderr_values)
+        local_result[hole_or_electron_mobility]["results"]["stderr"]["values"] = list(stderr_values)
 
         # Perform linear regression to find the zero-field mobility
         sqrt_fields = np.sqrt(fields).reshape(-1, 1)
@@ -107,7 +124,7 @@ class get_result_from:
         zero_field_mobility = np.exp(log_zero_field_mobility)
 
         # Set the zero-field mobility in the local_result dictionary
-        local_result["mobility"]["value"] = float(zero_field_mobility)
+        local_result[hole_or_electron_mobility]["value"] = float(zero_field_mobility)
 
         # Plotting the data and the regression line
         plt.figure()
@@ -127,5 +144,5 @@ class get_result_from:
         plt.plot(0, zero_field_mobility, 'bo', label=f'Zero-field mobility: {zero_field_mobility:.2e}')
 
         plt.legend()
-        plt.savefig('mobility_vs_sqrt_field.png')
-        plt.show()
+        plt.savefig(f'{hole_or_electron}_mobility_vs_sqrt_field.png')
+        # plt.show()
