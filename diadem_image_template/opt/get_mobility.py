@@ -34,7 +34,7 @@ from utils.logging_config import configure_logging
 from utils.subprocess_functions import run_command
 from utils.deposit_functions import setup_working_directory, check_and_extract_deposit_restart, \
     add_periodic_copies_deposit, create_deposit_restart_zip, handle_deposit_working_dir_cleanup, run_analysis, \
-    append_settings
+    append_settings, setup_working_directory_t
 from utils.result import get_result_from
 from utils.context_managers import ChangeDirectory
 from utils.lightforge_functions import set_carrier_type
@@ -599,7 +599,7 @@ try:
         # run_shell_script(script_path, env_vars)
 
         # deposit_init commands -->
-        current_dir, working_dir = setup_working_directory()  # this will copy things from the current to the working dir and change to it silently!!
+        current_dir, working_dir = setup_working_directory_t("deposit_scratch")  # this will copy things from the current to the working dir and change to it silently!!
         check_and_extract_deposit_restart()  # not used at the moment. left to allow for script extension.
 
         command = build_command(destination_path)  # this is the Deposit commands with appropriate command line args

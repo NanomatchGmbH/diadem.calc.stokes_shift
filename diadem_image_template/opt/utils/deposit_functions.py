@@ -40,6 +40,35 @@ def setup_working_directory():
     return current_dir, working_dir
 
 
+def setup_working_directory_t(work_dir_name:str):  # test
+    current_dir = os.getcwd()
+    working_dir = work_dir_name
+
+
+    # scratch_dir = os.environ.get('SCRATCH')
+    # home_dir = os.environ.get('HOME')
+    # generated_uuid = os.environ.get('GENERATED_UUID', 'default_uuid')  # Set a default UUID if not provided
+    #
+    # if scratch_dir and os.path.isdir(scratch_dir):
+    #     working_dir = os.path.join(scratch_dir, os.getlogin(), generated_uuid)
+    # elif home_dir and os.path.isdir(home_dir):
+    #     working_dir = os.path.join(home_dir, 'tmp', generated_uuid)
+    # else:
+    #     working_dir = current_dir
+
+    os.makedirs(working_dir, exist_ok=True)
+    for item in os.listdir(current_dir):
+        s = os.path.join(current_dir, item)
+        d = os.path.join(working_dir, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, dirs_exist_ok=True)
+        else:
+            shutil.copy2(s, d)
+
+    logger.info(f"Deposit running on node in directory {working_dir}")
+    os.chdir(working_dir)
+    return current_dir, working_dir
+
 def check_and_extract_deposit_restart():
     if os.environ.get('DO_RESTART') == 'True':
         if os.path.isfile('restartfile.zip'):
