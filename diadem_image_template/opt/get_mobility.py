@@ -48,6 +48,15 @@ configure_logging()
 logger = structlog.get_logger()
 
 
+def modify_yaml_file(destination_path):
+    with open(destination_path, 'r') as fid:
+        deposit_cargs_dict = yaml.safe_load(fid)
+
+    deposit_cargs_dict['machineparams']['ncpu'] = 16
+
+    with open(destination_path, 'w') as fid:
+        yaml.safe_dump(deposit_cargs_dict, fid)
+
 def list_directory_contents(path='.'):
     """
     List the contents of a directory and log it.
@@ -504,7 +513,7 @@ try:
         # 3.0. Prepare HOSTFILE
         all_avail_physical_cpus = psutil.cpu_count(logical=False)
         numcpus = global_calc_settings.get('ncpus', all_avail_physical_cpus)
-        hostfile_name = os.environ.get('HOSTFILE', 'hostfile.txt')  # it might be set from above.
+        hostfile_name = os.environ.get('HOSTFILE', 'hostfile.txt')  # it might be set from above.  # todo make through the realpath
         os.environ['HOSTFILE'] = hostfile_name
         generate_hostfile(numcpus, hostfile_name)
 
@@ -584,6 +593,11 @@ try:
         destination_path = pathlib.Path.cwd() / 'deposit_cargs.yml'
 
         copy_with_changes(source_path, changes[executable.value], destination_path)
+
+        # ad hoc --> SET N_PROC TO 16!
+        modify_yaml_file(destination_path)
+        # <-- ad hoc
+
 
         # Generate a UUID in Python
         # todo: do we need to cd and so on??? for consistency??
