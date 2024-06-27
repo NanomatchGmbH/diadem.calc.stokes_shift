@@ -42,9 +42,10 @@ def setup_working_directory():
 
 def setup_working_directory_t(work_dir_name:str):  # test
     current_dir = os.getcwd()
-    working_dir = work_dir_name
+    # working_dir = work_dir_name
 
-
+    working_dir = os.path.join(current_dir, work_dir_name)
+    
     # scratch_dir = os.environ.get('SCRATCH')
     # home_dir = os.environ.get('HOME')
     # generated_uuid = os.environ.get('GENERATED_UUID', 'default_uuid')  # Set a default UUID if not provided
