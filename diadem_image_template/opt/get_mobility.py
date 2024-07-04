@@ -414,7 +414,7 @@ else:
 # <--
 
 
-folder_name = 'diadem_files'
+folder_name = '.'
 pathlib.Path(folder_name).mkdir(parents=True, exist_ok=True)
 diadem_dir_abs_path = pathlib.Path(folder_name).resolve()
 logger.info(f" Folder to copy specified in the Calculator files will be copied to {diadem_dir_abs_path}.")
