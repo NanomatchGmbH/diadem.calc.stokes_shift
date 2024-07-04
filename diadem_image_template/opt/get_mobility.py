@@ -762,10 +762,8 @@ for executable in [Executable.LIGHTFORGE_HOLE, Executable.LIGHTFORGE_ELECTRON]:
 # resultdict will be filled in after every workflow step.
 # if the workflow succeed, resultdict is complete.
 
-logger.info("Listing directory contents at the end")
-list_directory_contents()
-
 with open("result.yml", 'wt') as outfile:
     yaml.dump(resultdict, outfile)
 
-sys.exit(0)
+logger.info("Listing directory contents at the end")
+list_directory_contents()
