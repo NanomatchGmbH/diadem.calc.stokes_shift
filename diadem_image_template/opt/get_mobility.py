@@ -22,7 +22,7 @@ import uuid
 import zipfile
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 
 import psutil
 import structlog
@@ -303,7 +303,56 @@ def distribute_files(executable, wf_config: WorkflowConfig, diadem_files_output_
         if error_stageOut_files:
             zip_files_or_file_patterns(error_stageOut_files, f'../{executable.value}_errorStageOut.zip')
 
+def stop_workflow_after_module(stop_after_module, resultdict: Dict, executable: Executable, logger, is_last_module=False):
+    """
+    Checks if the stop condition is met and either stops execution or proceeds with the workflow.
+    Example: stop_after_value == Deposit --> results.yml written, script ends.
 
+    Parameters:
+    - stop_after_module: Name of the module (e.g. 'Deposit') after which the workflow is stopped.
+    - resultdict: The result dictionary written at the end of the script.
+    - executable: The current executable (e.g. Executable.DEPOSIT).
+    - logger: Logger instance for logging.
+    - is_last_module: Boolean indicating if the current module is the last in the workflow.
+    """
+    if stop_after_module == executable.value or is_last_module:
+        with open("result.yml", 'wt') as outfile:
+            yaml.dump(resultdict, outfile)
+
+        logger.info("Listing directory contents at the end")
+        list_directory_contents()
+        logger.info(f"Stop condition after module '{stop_after_module}' has been met. Halting workflow execution.")
+        sys.exit(0)  # Gracefully exit the script when the condition is met
+    else:
+        pass
+    
+    
+def validate_stop_after_value(global_calc_settings, logger) -> Union[str, None]:
+    """
+    Validates that the 'stop_after' key in global_calc_settings is defined and matches a valid Executable.
+    If 'stop_after' is not set, the function returns None, allowing the workflow to proceed to the end.
+
+    Parameters:
+    - global_calc_settings: The global calculation settings dictionary containing the 'stop_after' key.
+    - logger: Logger instance for logging information.
+
+    Returns:
+    - The validated stop_after value if it is valid, or None if not set.
+
+    """
+    stop_after_value = global_calc_settings.get('stop_after')
+
+    if stop_after_value is None:
+        logger.info("'stop_after' is not set in global_calc_settings. The workflow will proceed to the end.")
+        return None
+
+    valid_executables = [executable.value for executable in Executable]
+    if stop_after_value not in valid_executables:
+        logger.error(f"Invalid 'stop_after' value: '{stop_after_value}'. Must be one of: {valid_executables}.")
+        sys.exit(f"Exiting due to invalid 'stop_after' value: '{stop_after_value}'.")
+
+    logger.info(f"'stop_after' value is valid: '{stop_after_value}'")
+    return stop_after_value
 ########################################################################################################################
 
 
@@ -344,6 +393,8 @@ changes = calcdict['specification']
 global_calc_settings = changes.get(
     'global')  # contains things which are general to all specifications, in this case to all tools. Like number of cpus.
 files = calcdict['files']
+# Validate the 'stop_after' setting in global_calc_settings before starting the workflow
+stop_module = validate_stop_after_value(global_calc_settings, logger)
 
 inchi = moldict["inchi"]
 inchiKey = moldict["inchiKey"]
@@ -463,6 +514,8 @@ except Exception as e:
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
+stop_workflow_after_module(stop_module, resultdict, executable, logger)
+
 # 1 -> 2
 previous_executable = executable  #
 
@@ -497,6 +550,8 @@ except Exception as e:
     logger.error(f"An error occurred during {executable.value} processing: {e}")
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
+
+stop_workflow_after_module(stop_module, resultdict, executable, logger)
 
 # 2->3
 previous_executable = executable
@@ -578,6 +633,8 @@ except Exception as e:
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
+stop_workflow_after_module(stop_module, resultdict, executable, logger)
+
 # 3->4
 previous_executable = executable
 
@@ -647,6 +704,8 @@ except Exception as e:
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
+stop_workflow_after_module(stop_module, resultdict, executable, logger)
+
 # 4->5
 previous_executable = executable
 
@@ -715,6 +774,8 @@ except Exception as e:
     distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
     sys.exit(1)
 
+stop_workflow_after_module(stop_module, resultdict, executable, logger)
+
 # 5->6
 previous_executable = executable
 
@@ -762,8 +823,5 @@ for executable in [Executable.LIGHTFORGE_HOLE, Executable.LIGHTFORGE_ELECTRON]:
 # resultdict will be filled in after every workflow step.
 # if the workflow succeed, resultdict is complete.
 
-with open("result.yml", 'wt') as outfile:
-    yaml.dump(resultdict, outfile)
 
-logger.info("Listing directory contents at the end")
-list_directory_contents()
+stop_workflow_after_module(stop_module, resultdict, executable, logger, is_last_module=True)
