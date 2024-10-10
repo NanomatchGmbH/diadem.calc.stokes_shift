@@ -1,6 +1,6 @@
 {
  "id": "48eafd06-3354-4db7-a50d-167995cc6f04",
- "calculatorId": "mobility",
+ "calculatorId": "mobility_120",
  "files": [
   "hole_mobility_vs_sqrt_field.png",
   "electron_mobility_vs_sqrt_field.png",
@@ -38,7 +38,8 @@
    "lightforge_electron_optionalFiles.zip"
   ]
  },
- "poolId": "Standard_D32ads_v5",
+ "poolId": "Standard_HB120rs_v3",
+
  "price": 450,
  "provides": [
   "electron_mobility",
@@ -81,7 +82,7 @@
   },
   "global": {
    "ncpus": 120,
-   "stop_after": "Deposit"
+   "stop_after": "QuantumPatch"
   },
   "lightforge_electron": {
    "experiments": [
