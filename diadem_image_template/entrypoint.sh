@@ -4,7 +4,7 @@
 # molecule.yml and a calculator.yml in the work directory.
 
 # Get the number of CPUs (if needed, replace this logic with your actual CPU detection script)
-ncpus=30
+ncpus=120
 
 export OMP_NUM_THREADS=${ncpus}
 export UC_PROCESSORS_PER_NODE=${ncpus}

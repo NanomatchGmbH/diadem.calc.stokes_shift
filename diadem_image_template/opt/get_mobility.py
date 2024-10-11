@@ -49,6 +49,9 @@ logger = structlog.get_logger()
 
 
 def modify_yaml_file(destination_path):
+    """
+    ad hoc function to set ncpus for Deposit to 16. For some reason, it was used in production. Remove if not needed for a while!
+    """
     with open(destination_path, 'r') as fid:
         deposit_cargs_dict = yaml.safe_load(fid)
 
@@ -652,7 +655,7 @@ try:
         copy_with_changes(source_path, changes[executable.value], destination_path)
 
         # ad hoc --> SET N_PROC TO 16!
-        modify_yaml_file(destination_path)
+        # modify_yaml_file(destination_path)
         # <-- ad hoc
 
 
