@@ -1,14 +1,11 @@
 calculatorId: morphology_120
 files:
-- hole_mobility_vs_sqrt_field.png
-- electron_mobility_vs_sqrt_field.png
 - output_molecule.mol2
 - structure.cml
 - visualization_2D_and_3D.png
 - summary_RDF.png
-- DeltaE.png
 id: 48eafd06-3354-4db7-a50d-167995cc6f04
-image: diadem.azurecr.io/mobility:1.0.0
+image: diadem.azurecr.io/mobility:2.0.0
 onDemandEnabled: true
 operationFiles:
   debugFiles:
@@ -33,12 +30,8 @@ operationFiles:
   - lightforge_hole_optionalFiles.zip
   - lightforge_electron_optionalFiles.zip
 poolId: Standard_HB120rs_v3
-price: 450
+price: 200
 provides:
-- electron_mobility
-- hole_mobility
-- HOMO
-- LUMO
 - morphology
 - dipole
 specification:
@@ -54,7 +47,7 @@ specification:
       postrelaxation_steps: 0
       sa:
         cycles: 30
-        steps: 130000
+        steps: 15000
   DihedralParametrizer:
     DFT_options:
       Basis: def2-SVP
@@ -90,7 +83,7 @@ specification:
           cutoff: 25
   global:
     ncpus: 120
-    stop_after: QuantumPatch
+    stop_after: Deposit
   lightforge_electron:
     experiments:
     - Temperature: 300
@@ -113,4 +106,4 @@ specification:
     - thickness: 50
     max_iterations: 5000000
     morphology_width: 50
-version: 1.0.0
+version: 2.0.0
