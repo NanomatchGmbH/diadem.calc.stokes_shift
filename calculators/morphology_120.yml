@@ -47,7 +47,7 @@ specification:
       postrelaxation_steps: 0
       sa:
         cycles: 30
-        steps: 15000
+        steps: 130000
   DihedralParametrizer:
     DFT_options:
       Basis: def2-SVP
