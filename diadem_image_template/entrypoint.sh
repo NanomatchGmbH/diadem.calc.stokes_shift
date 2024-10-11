@@ -16,4 +16,4 @@ python /opt/get_mobility.py
 # The workdir_bundle.tar.gz will also be staged out for debugging purposes, if you create it. 
 
 # A good way to pack all files smaller than e.g 500k for stageout is:
-find . -type f -print0 | xargs -0 tar czf workdir_bundle.tar.gz
+find . -type f -size -500k -print0 | xargs -0 tar czf workdir_bundle.tar.gz
