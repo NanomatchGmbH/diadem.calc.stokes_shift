@@ -90,7 +90,7 @@ specification:
           cutoff: 25
   global:
     ncpus: 120
-    stop_after: QuantumPatch
+    stop_after: lightforge
   lightforge_electron:
     experiments:
     - Temperature: 300
