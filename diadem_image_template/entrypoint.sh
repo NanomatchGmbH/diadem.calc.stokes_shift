@@ -12,8 +12,12 @@ export NM_LICENSE_SERVER=123.123.123.123
 
 python /opt/get_mobility.py
 
-# Make sure that after this script finishes a result.yml exists.
-# The workdir_bundle.tar.gz will also be staged out for debugging purposes, if you create it. 
-
-# A good way to pack all files smaller than e.g 500k for stageout is:
-find . -type f -size -500k -print0 | xargs -0 tar czf workdir_bundle.tar.gz
+if [ -f log.txt ]; then
+    echo "log.txt exists." > README
+    echo "This archive INTENTIONALLY contains log.txt only, no other files from the working directory. Intentionally." >> README
+    tar czf workdir_bundle.tar.gz README log.txt
+else
+    echo "log.txt was not found. Something went wrong" > README
+    echo "This archive contains only the README file, as log.txt was missing. No other files from the working directory were supposed to be included. Intentionally." >> README
+    tar czf workdir_bundle.tar.gz README
+fi
