@@ -5,7 +5,7 @@ files:
 - visualization_2D_and_3D.png
 - summary_RDF.png
 id: 48eafd06-3354-4db7-a50d-167995cc6f04
-image: diadem.azurecr.io/mobility:2.0.0
+image: diadem.azurecr.io/mobility:2.0.1
 onDemandEnabled: true
 operationFiles:
   debugFiles:
@@ -106,4 +106,4 @@ specification:
     - thickness: 50
     max_iterations: 5000000
     morphology_width: 50
-version: 2.0.0
+version: 2.0.1
