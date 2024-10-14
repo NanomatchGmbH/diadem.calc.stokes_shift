@@ -90,7 +90,7 @@ specification:
           cutoff: 25
   global:
     ncpus: 120
-    stop_after: lightforge
+    stop_after: lightforge_electron
   lightforge_electron:
     experiments:
     - Temperature: 300
