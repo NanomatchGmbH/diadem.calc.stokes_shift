@@ -1,4 +1,4 @@
-calculatorId: mobility_120
+calculatorId: test_mobility_120
 files:
 - hole_mobility_vs_sqrt_field.png
 - electron_mobility_vs_sqrt_field.png
@@ -113,4 +113,4 @@ specification:
     - thickness: 50
     max_iterations: 5000000
     morphology_width: 50
-version: 2.0.0
+version: 2.0.1
