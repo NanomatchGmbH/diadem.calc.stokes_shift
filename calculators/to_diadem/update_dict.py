@@ -1,3 +1,8 @@
+"""
+This will create the json files that are to be used as:
+
+"""
+
 import os
 import sys
 import yaml
@@ -31,6 +36,7 @@ def parse_list_calculators(list_calculators_file, version):
 
     return calculators
 
+
 def parse_list_pcs(list_pcs_file):
     # Parse list_pcs.txt to get the name and equivalentNames
     pcs_map = {}
@@ -39,7 +45,7 @@ def parse_list_pcs(list_pcs_file):
 
     # Use regex to split by chunks for each property (starts with digits)
     property_chunks = re.split(r'^\d+\.', content, flags=re.MULTILINE)
-    
+
     for chunk in property_chunks:
         name_match = re.search(r'name:\s*([^\n]+)', chunk)
         equivalent_names_match = re.search(r'equivalentNames:\s*\[([^\]]*)\]', chunk)
@@ -47,7 +53,8 @@ def parse_list_pcs(list_pcs_file):
         if name_match:
             name = name_match.group(1).strip().lower()  # Normalize to lowercase
             if equivalent_names_match:
-                equivalent_names = [name.strip() for name in equivalent_names_match.group(1).split(',')]
+                # Clean up quotes and spaces from the equivalentNames
+                equivalent_names = [name.strip().strip("'\"") for name in equivalent_names_match.group(1).split(',')]
             else:
                 equivalent_names = [name]  # If no equivalentNames, default to name itself
 
@@ -103,10 +110,10 @@ if __name__ == "__main__":
 
     # Define the paths based on the folder name
     base_folder = os.path.join(os.getcwd(), folder_name)
-    list_calculators_file = os.path.join(base_folder, 'json', 'list_calculators.txt')
-    list_pcs_file = os.path.join(base_folder, 'json', 'list_pcs.txt')
+    list_calculators_file = os.path.join(base_folder, 'txt', 'list_calculators.txt')
+    list_pcs_file = os.path.join(base_folder, 'txt', 'list_pcs.txt')
     yaml_folder = os.path.join(base_folder, 'yaml')
-    output_folder = os.path.join(base_folder, 'json')
+    output_folder = os.path.join(base_folder, 'json/update_dicts')
 
     # Ensure the output folder exists
     os.makedirs(output_folder, exist_ok=True)
