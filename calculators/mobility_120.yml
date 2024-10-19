@@ -99,9 +99,9 @@ specification:
       simulations: 29
     iv_fluctuation: '0.01'
     layers:
-    - thickness: 50
+    - thickness: 40
     max_iterations: 5000000
-    morphology_width: 50
+    morphology_width: 40
   lightforge_hole:
     experiments:
     - Temperature: 300
@@ -110,7 +110,7 @@ specification:
       simulations: 29
     iv_fluctuation: '0.01'
     layers:
-    - thickness: 50
+    - thickness: 40
     max_iterations: 5000000
-    morphology_width: 50
+    morphology_width: 40
 version: 2.0.1
