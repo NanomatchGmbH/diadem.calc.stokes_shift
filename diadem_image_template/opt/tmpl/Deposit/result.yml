@@ -1,5 +1,5 @@
 morphology:
-  value: "file: structure.cml"
+  value: 0
   results:
     mass_density:
       value: null
