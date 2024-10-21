@@ -16,6 +16,12 @@ python /opt/get_mobility.py
 if [ "$ALLOW_BUNDLE" = true ]; then
     # If bundling is allowed, bundle all files smaller than 500k
     find . -type f -size -500k -print0 | xargs -0 tar czf workdir_bundle.tar.gz
+    # Check if log.txt exists before appending it to the archive
+    if [ -f log.txt ]; then
+        tar --append --file=workdir_bundle.tar.gz log.txt
+    else
+        echo "log.txt was not found. It will not be added to the bundle." >> README
+    fi
 else
     # If bundling is not allowed, only bundle README and log.txt and explains why
     if [ -f log.txt ]; then
