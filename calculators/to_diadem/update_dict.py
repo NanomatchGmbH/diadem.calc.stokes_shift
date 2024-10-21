@@ -111,7 +111,7 @@ if __name__ == "__main__":
     # Define the paths based on the folder name
     base_folder = os.path.join(os.getcwd(), folder_name)
     list_calculators_file = os.path.join(base_folder, 'txt', 'list_calculators.txt')
-    list_pcs_file = os.path.join(base_folder, 'txt', 'list_pcs.txt')
+    list_pcs_file = os.path.join(base_folder, 'txt', 'list_pct.txt')
     yaml_folder = os.path.join(base_folder, 'yaml')
     output_folder = os.path.join(base_folder, 'json/update_dicts')
 
@@ -119,7 +119,7 @@ if __name__ == "__main__":
     os.makedirs(output_folder, exist_ok=True)
 
     # Version to filter by
-    version = "2.0.1"
+    version = "2.0.2"  # idle?
 
     # Parse the list_calculators.txt file and get calculators for the given version
     calculators = parse_list_calculators(list_calculators_file, version)

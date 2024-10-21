@@ -7,8 +7,11 @@ Every folder contains calculators deployed to the diadem.
 
 If you want to deploy something to diadem:
 1. Hand-craft the calculator yaml files and put to the folder `./yaml`.
-2. Use `merge_yaml_convert_to_json.py` script to convert all calculators from `./yaml` to `./json`. There will be a single `json` file.
-3. use userscript to add calculator and get its `id`.
+2. Use `merge_yaml_convert_to_json.py` script to convert all calculators from `./yaml` to `./json`. There will be a single `calculators.json` file.
+3. use userscript to add calculator and get its `id`:
+```commandline
+bash add_calculator.sh --filepath /home/artem/Desktop/test_diadem.calc.mobiity/diadem.calc.mobility/calculators/to_diadem/120_2.0.2/json/calculators.json
+```
 
 ## How to convert yaml files to a json file:
 ```commandline
@@ -45,4 +48,7 @@ When designing yaml calculators files:
 3. Add calculators to diadem using userscripts.
 4. Generate output for `.txt` folder using userscript, see `/txt.README.md`
 5. Run `update_dict.py` to generate the `/json/update_dicts/*.json`.
-6. Add `id` to the calculators using userscripts.
+6. Add `id` to the calculators using userscript:
+```commandline
+add_calculator_to_pct.sh --filepath <path_to_update_dicts/*.json>
+```
