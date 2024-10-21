@@ -7,7 +7,7 @@ Every folder contains calculators deployed to the diadem.
 
 If you want to deploy something to diadem:
 1. Hand-craft the calculator yaml files and put to the folder `./yaml`.
-2. Use `yaml_to_json.py` script to convert all calculators from `./yaml` to `./json`. There will be a single `json` file.
+2. Use `merge_yaml_convert_to_json.py` script to convert all calculators from `./yaml` to `./json`. There will be a single `json` file.
 3. use userscript to add calculator and get its `id`.
 
 ## How to convert yaml files to a json file:
