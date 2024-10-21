@@ -827,8 +827,9 @@ for executable in [Executable.LIGHTFORGE_HOLE, Executable.LIGHTFORGE_ELECTRON]:
         distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
         sys.exit(1)
 
+    stop_workflow_after_module(stop_module, resultdict, executable, logger)  # check both electron and hole mobility
 # resultdict will be filled in after every workflow step.
 # if the workflow succeed, resultdict is complete.
 
 
-stop_workflow_after_module(stop_module, resultdict, executable, logger, is_last_module=True)
+stop_workflow_after_module(stop_module, resultdict, executable, logger, is_last_module=True)  # if nothing specified, will save results and exit 0
