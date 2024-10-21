@@ -3,6 +3,7 @@ import json
 import os
 import argparse
 
+JSON_FILENAME = 'calculators.json'
 
 def merge_yaml_to_json(input_folder):
     yaml_folder = os.path.join(input_folder, 'yaml')
@@ -13,7 +14,7 @@ def merge_yaml_to_json(input_folder):
         os.makedirs(json_folder)
 
     # Create the path for the output JSON file
-    output_json_path = os.path.join(json_folder, 'merged_data.json')
+    output_json_path = os.path.join(json_folder, JSON_FILENAME)
 
     all_data = {}
     index = 0
