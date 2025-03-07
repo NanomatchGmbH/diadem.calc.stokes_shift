@@ -1,0 +1,11 @@
+calculatorId: mobility_calculator
+files:
+- files_for_kmc.zip
+image: diadem.azurecr.io/mobility_small:0.0.1
+onDemandEnabled: true
+poolId: Standard_D4_v3
+price: 50
+provides:
+- mobility
+specification: {}
+version: 1.0.0

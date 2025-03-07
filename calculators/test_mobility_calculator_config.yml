@@ -1,0 +1,110 @@
+calculatorId: mobility_calculator
+files:
+- 'hole_mobility_vs_sqrt_field.png'
+- 'electron_mobility_vs_sqrt_field.png'
+- 'output_molecule.mol2'
+- 'structure.cml'
+- 'visualization_2D_and_3D.png'
+- 'summary_RDF.png'
+- 'DeltaE.png'
+operationFiles:
+  debugFiles:
+    - QPParametrizer_debugFiles.zip
+    - DihedralParametrizer_debugFiles.zip
+    - Deposit_debugFiles.zip
+    - QuantumPatch_debugFiles.zip
+    - lightforge_hole_debugFiles.zip
+    - lightforge_electron_debugFiles.zip
+  errorStageOut:
+    - QPParametrizer_errorStageOut.zip
+    - DihedralParametrizer_errorStageOut.zip
+    - Deposit_errorStageOut.zip
+    - QuantumPatch_errorStageOut.zip
+    - lightforge_hole_errorStageOut.zip
+    - lightforge_electron_errorStageOut.zip
+  optionalFiles:
+    - QPParametrizer_optionalFiles.zip
+    - DihedralParametrizer_optionalFiles.zip
+    - Deposit_optionalFiles.zip
+    - QuantumPatch_optionalFiles.zip
+    - lightforge_hole_optionalFiles.zip
+    - lightforge_electron_optionalFiles.zip
+image: diadem.azurecr.io/mobility_small:0.0.1
+onDemandEnabled: true
+poolId: Standard_D4_v3
+price: 50
+provides:
+- mobility
+specification:
+  global:
+    ncpus: 30
+    stop_after: Deposit
+  QPParametrizer:
+    DFT Engine:
+      Threads: '30'
+      Engine: Psi4
+      Memory (MB): 78000.0
+      PySCF Settings:
+        basis: def2-SVP
+  DihedralParametrizer:
+    DFT_options:
+      Basis: def2-SVP
+      Engine: PySCF
+      memory_per_thread: 4000
+    DH_scan_steps: 10
+    forcefield_optimization:
+        no_samples: 10
+    version: v4
+    scf_iter: 1
+  Deposit:
+    simparams:
+      Nmol: 200
+      PBC: True
+      sa:
+        steps: 20000
+        cycles: 30
+      postrelaxation_steps: 0
+    Box:
+      Lx: 15.0
+      Ly: 15.0
+      Lz: 50.0
+      grid_overhang: 8
+  QuantumPatch:
+    QuantumPatch:
+      calculateJs: true
+      qpproxJs: true
+      morphology: structurePBC.cml
+      partial_charge_cutoff: 30
+    System:
+      Core:
+        number: 10
+      Shells:
+        '0':
+          cutoff: 7.0
+        '1':
+          cutoff: 30.0
+        '2':
+          cutoff: 15.0
+  lightforge_hole:
+    morphology_width: 30
+    layers:
+      - thickness: 30
+    experiments:
+      - simulations: 10
+        Temperature: 300
+        field_strength: 0.2 0.3 0.4
+        initial_holes: 30
+    iv_fluctuation: 0.05
+    max_iterations: 500000
+  lightforge_electron:
+    morphology_width: 30
+    layers:
+      - thickness: 30
+    experiments:
+      - simulations: 10
+        Temperature: 300
+        field_strength: 0.2 0.3 0.4
+        initial_electrons: 30
+    iv_fluctuation: 0.05
+    max_iterations: 500000
+version: 1.0.0

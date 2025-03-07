@@ -1,0 +1,55 @@
+QP_output_files:
+- QP_output.zip: QP_output_0.zip
+  name: molA
+expansion_scheme: edcm
+experiments:
+- Temperature: 300
+  field_direction:
+  - 1
+  - 0
+  - 0
+  field_strength: 0.2 0.3 0.4
+  initial_holes: 30
+  measurement: DC
+  simulations: 10
+iv_fluctuation: 0.05
+layers:
+- molecule_species:
+  - concentration: 1.0
+    material: htl
+  morphology_input_mode: automatic
+  thickness: 30
+live_reporting:
+  IV: false
+  density: false
+  reporting_time_interval: 15
+materials:
+- input_mode_transport: 'QP: sig PAR: eaip,l'
+  molecule_parameters:
+    QP_output_sigma: molA
+    energies:
+    - - 5.0
+      - 2.0
+    - - 0.2
+      - 0.2
+    molecule_pdb: molecule_0.pdb
+  name: htl
+max_iterations: 500000
+morphology_width: 30
+neighbours: 120
+new_wano: true
+pair_input:
+- QP_output: molA
+  molecule 1: htl
+  molecule 2: htl
+particles:
+  electrons: false
+  excitons: false
+  holes: true
+pbc:
+- true
+- true
+- true
+superexchange: true
+ti_prune: true
+transfer_integral_source: QP_output

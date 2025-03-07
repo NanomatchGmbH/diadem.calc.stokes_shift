@@ -1,0 +1,10 @@
+settings_ng.*
+quantumpatch_error_files
+quantumpatch_runtime_files
+*.err
+*.out
+*.stderr
+crashed.jobs.master
+Traceback_MainLoop_*
+shredder_mpi_stderr
+crashed_centers
