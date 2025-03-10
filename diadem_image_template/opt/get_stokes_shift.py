@@ -554,15 +554,6 @@ except Exception as e:
 
 stop_workflow_after_module(stop_module, resultdict, executable, logger)
 
-# 2->3
-previous_executable = executable
-
-# resultdict will be filled in after every workflow step.
-# if the workflow succeeds, resultdict is complete.
-
-
-stop_workflow_after_module(stop_module, resultdict, executable, logger, is_last_module=True)  # if nothing specified, will save results and exit 0
-
 # 2 -> 3
 previous_executable = executable  #
 
@@ -602,11 +593,8 @@ except Exception as e:
 
 stop_workflow_after_module(stop_module, resultdict, executable, logger)
 
-# 3->4
-previous_executable = executable
+
 
 # resultdict will be filled in after every workflow step.
 # if the workflow succeeds, resultdict is complete.
-
-
 stop_workflow_after_module(stop_module, resultdict, executable, logger, is_last_module=True)  # if nothing specified, will save results and exit 0
