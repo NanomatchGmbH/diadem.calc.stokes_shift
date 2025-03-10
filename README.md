@@ -262,4 +262,8 @@ The image will be tagged with the output of `git describe` (i.e., the most curre
 
 ## Testing the image
 The image should now contain all dependencies required to execute your scientific software. 
-If you run pytest, the image will be tested with all combinations of Calculators defined in `Calculators/*.yml` and `Molecules` defined in tests/inputs/molecules`. For every test done, a folder tests/calculator/molecule will be generated. If the test was successful, the generated `result.yml` will be put into this folder. Check it and add it to the repository, the next time a test is run, the two dictionaries will be compared and an error generated if they differ.
+If you run pytest, the image will be tested with all combinations of Calculators defined in `Calculators/*.yml` 
+and `Molecules` defined in `tests/inputs/molecules`. For every test done, a folder tests/calculator/molecule will be 
+generated. If the test was successful, the generated `result.yml` will be put into this folder. 
+Check it and add it to the repository, the next time a test is run, the two dictionaries will be compared and an error
+generated if they differ.
