@@ -202,6 +202,7 @@ with open("result.yml",'wt') as outfile:
 ````
 
 ## Locking the environment
+
 Docker requires an explicit record of exact package versions to guarantee a reproducible software environment. 
 To create and commit this locked dependency file (`conda-lock.yml`), follow these steps:
 1. Navigate to the `diadem_image_template` folder. 
@@ -211,18 +212,54 @@ install the exact package versions determined by your specified dependencies, an
 containing these versions.
 4. Commit `conda-lock.yml` file. 
 
-### Push a git tag
-To allow for automatic versioning of the image, add a tag, like this:
+## Tag an image for deployment
 
+Tagging a Docker image is like Git versioning but specifically for images that are ready for **deployment on the diadem infrastructure** or **external testing**.  
+
+When testing locally, **tagging is not needed**. However, if you decide to deploy or test elsewhere, you must:  
+1. Recommended: **manually update the version** in the calculator `YAML` file to ensure the correct image-calculator relation and push it.
+2. **Tag the repository** with the same version.  
+3. **Push the tag** so it can be retrieved later.
+
+### **Tag and Push an image**  
+
+```bash
+git tag -a "<project_name>/v0.0.1" -m "Version 0.0.1"
+git push origin "<project_name>/v0.0.1"
 ```
-    git tag -a "name_as_in_project_config.sh/v0.0.1" -m "First version definition"
-    git push origin "name_as_in_project_config.sh/v0.0.1"
+
+To check the current version (when the first tag already exists), run:
+
+```bash
+git describe
 ```
 
-This will alllow automatic tagging of generated images. Everytime you want to not only build an image (for example for testing) but also upload it (for deployment on the diadem infrastructure), you need to set an explicit tag with a version higher than the last one and push it like above. If you want to know the current version, just use `git describe` (after the first tag).
+#### Understanding `git secribe` output.
 
-### Building the image
-Inside the diadem\_image\_template folder: Make sure there is nothing uncommited in the repository and call `../scripts/build_image.sh`. The image will be tagged with the output of git describe (i.e. the most current tag modified).
+If you previously tagged an image (e.g., `v2.0.2`), built it, then made five more commits, running `git describe` will produce:
 
-### Testing the image
-The image should now contain all dependencies required to execute your scientific software. If you run pytest, the image will be tested with all combinations of Calculators defined in `Calculators/*.yml` and `Molecules` defined in tests/inputs/molecules`. For every test done, a folder tests/calculator/molecule will be generated. If the test was successful, the generated result.yml will be put into this folder. Check it and add it to the repository, the next time a test is run, the two dictionaries will be compared and an error generated if they differ.
+```bash
+$ git describe
+mobility/v2.0.2-5-g44790dc
+```
+
+This means:
+- `v2.0.2` → Last **actual tag**.
+- `-5` → 5 commits **after** the tag.
+- `g44790dc` Latest commit **hash**
+
+⚠️ **Do not push this auto-generated tag**!
+
+If a new version is needed, create a fresh tag manually as described above.
+
+## Building the image
+Inside the `diadem_image_template` folder: Make sure there is nothing uncommited in the repository and call:
+```bash
+../scripts/build_image.sh
+``` 
+The image will be tagged with the output of `git describe` (i.e., the most current tag modified).
+
+
+## Testing the image
+The image should now contain all dependencies required to execute your scientific software. 
+If you run pytest, the image will be tested with all combinations of Calculators defined in `Calculators/*.yml` and `Molecules` defined in tests/inputs/molecules`. For every test done, a folder tests/calculator/molecule will be generated. If the test was successful, the generated `result.yml` will be put into this folder. Check it and add it to the repository, the next time a test is run, the two dictionaries will be compared and an error generated if they differ.
