@@ -234,7 +234,7 @@ To check the current version (when the first tag already exists), run:
 git describe
 ```
 
-#### Understanding `git secribe` output.
+#### Understanding `git describe` output.
 
 If you previously tagged an image (e.g., `v2.0.2`), built it, then made five more commits, running `git describe` will produce:
 
