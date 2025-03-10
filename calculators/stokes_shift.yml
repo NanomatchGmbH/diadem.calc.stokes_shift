@@ -17,7 +17,14 @@ provides:
 - LUMO
 - dipole
 specification:
-  QPParametrizer:
+  QPParametrizer_S0_opt:
+    DFT Engine:
+      Engine: Psi4
+      Memory (MB): 336000
+      PySCF Settings:
+        basis: def2-SVP
+      Threads: 120
+  QPParametrizer_S1_opt:
     DFT Engine:
       Engine: Psi4
       Memory (MB): 336000

@@ -12,7 +12,7 @@ DFT Engine:
     Geometry Convergence: normal
     Partial Charge Method: ESP
     Preoptimization: None
-    SCF Convergence: fast
+    SCF Convergence: normal
   PySCF Settings:
     basis: def2-SVP
     functional: B3LYP

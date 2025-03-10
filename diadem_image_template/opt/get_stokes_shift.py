@@ -190,12 +190,8 @@ def find_executable_path(executable_name):
 
 class Executable(Enum):
     XTB = 'xtb'
-    QPPARAMETRIZER = 'QPParametrizer'
-    DIHEDRAL_PARAMETRIZER = 'DihedralParametrizer'
-    QUANTUMPATCH = 'QuantumPatch'
-    DEPOSIT = 'Deposit'
-    LIGHTFORGE_HOLE = 'lightforge_hole'
-    LIGHTFORGE_ELECTRON = 'lightforge_electron'
+    QPPARAMETRIZER_S0_opt = 'QPParametrizer_S0_opt'
+    QPPARAMETRIZER_S1_opt = 'QPParametrizer_S1_opt'
 
 
 # Define the WorkflowConfig dataclass with an extended constructor
@@ -521,9 +517,9 @@ stop_workflow_after_module(stop_module, resultdict, executable, logger)
 # 1 -> 2
 previous_executable = executable  #
 
-# 2 ##################################
-executable = executable.QPPARAMETRIZER
-######################################
+# 2 #########################################
+executable = executable.QPPARAMETRIZER_S0_opt
+#############################################
 
 
 try:
@@ -532,13 +528,16 @@ try:
 
         fetch_output_from_previous_executable(previous_executable.value)
 
-        command = f"{executable.value}"
-        source_path = f'{opt_tmpl}/{executable.value}/parametrizer_settings.yml'  # template has the name of the executable
+        executable_path = find_executable_path(executable.value.split('_')[0])  # QPParametrizer_* -> QPParametrizer
+        command = f"{executable_path}"
+
+        source_path = f'{opt_tmpl}/{executable.value}/parametrizer_settings.yml'
         destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
         copy_with_changes(source_path, changes[executable.value], destination_path)
 
         run_command(command)
 
+        shutil.copy('output_molecule.mol2', 'molecule_S0_opt.mol2')
         distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
 
         # result
@@ -556,6 +555,54 @@ except Exception as e:
 stop_workflow_after_module(stop_module, resultdict, executable, logger)
 
 # 2->3
+previous_executable = executable
+
+# resultdict will be filled in after every workflow step.
+# if the workflow succeeds, resultdict is complete.
+
+
+stop_workflow_after_module(stop_module, resultdict, executable, logger, is_last_module=True)  # if nothing specified, will save results and exit 0
+
+# 2 -> 3
+previous_executable = executable  #
+
+# 2 #########################################
+executable = executable.QPPARAMETRIZER_S1_opt
+#############################################
+
+
+try:
+    with ChangeDirectory(executable.value):
+
+        fetch_output_from_previous_executable(previous_executable.value)
+
+        executable_path = find_executable_path(executable.value.split('_')[0])  # QPParametrizer_* -> QPParametrizer
+        command = f"{executable_path}"
+
+        source_path = f'{opt_tmpl}/{executable.value}/parametrizer_settings.yml'
+        destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
+        copy_with_changes(source_path, changes[executable.value], destination_path)
+
+        run_command(command)
+
+        shutil.copy('output_molecule.mol2', 'molecule_S1_opt.mol2')
+        distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
+
+        # result
+        local_resultdict = wf_config.result.get(executable)
+        get_result_from.QPParametrizer(local_resultdict, 'mol_data.yml')
+        resultdict[inchiKey].update(local_resultdict)
+        with open("result.yml", 'wt') as outfile:
+            yaml.dump(local_resultdict,
+                      outfile)  # we save the result locally in QPP folder in case the script will crash on a later stage.
+except Exception as e:
+    logger.error(f"An error occurred during {executable.value} processing: {e}")
+    distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
+    sys.exit(1)
+
+stop_workflow_after_module(stop_module, resultdict, executable, logger)
+
+# 3->4
 previous_executable = executable
 
 # resultdict will be filled in after every workflow step.

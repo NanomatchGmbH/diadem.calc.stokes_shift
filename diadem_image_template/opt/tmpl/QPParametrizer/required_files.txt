@@ -1,3 +1,0 @@
-output_molecule.mol2
-molecule.spf
-molecule.pdb
