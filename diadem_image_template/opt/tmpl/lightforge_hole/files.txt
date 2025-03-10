@@ -1,1 +1,0 @@
-hole_mobility_vs_sqrt_field.png

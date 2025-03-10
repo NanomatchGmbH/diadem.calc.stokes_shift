@@ -11,7 +11,7 @@ export OMP_NUM_THREADS=${ncpus}
 export UC_PROCESSORS_PER_NODE=${ncpus}
 export NM_LICENSE_SERVER=123.123.123.123
 
-python /opt/get_mobility.py
+python /opt/get_stokes_shift.py
 
 if [ "$ALLOW_BUNDLE" = true ]; then
     # If bundling is allowed, bundle all files smaller than 500k

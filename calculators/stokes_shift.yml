@@ -1,0 +1,29 @@
+calculatorId: stokes_shift
+files:
+- output_molecule.mol2
+image: diadem.azurecr.io/stokes_shift:0.0.1
+onDemandEnabled: true
+operationFiles:
+  debugFiles:
+  - QPParametrizer_debugFiles.zip
+  errorStageOut:
+  - QPParametrizer_errorStageOut.zip
+  optionalFiles:
+  - QPParametrizer_optionalFiles.zip
+poolId: Standard_HB120rs_v3
+price: 50
+provides:
+- HOMO
+- LUMO
+- dipole
+specification:
+  QPParametrizer:
+    DFT Engine:
+      Engine: Psi4
+      Memory (MB): 336000
+      PySCF Settings:
+        basis: def2-SVP
+      Threads: 120
+  global:
+    ncpus: 120
+version: 0.0.1

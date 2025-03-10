@@ -1,3 +1,0 @@
-structure.cml
-visualization_2D_and_3D.png
-summary_RDF.png

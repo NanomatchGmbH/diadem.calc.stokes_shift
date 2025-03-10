@@ -1,2 +1,0 @@
-molecule_0.pdb
-molecule_0.spf
