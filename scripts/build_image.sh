@@ -10,8 +10,8 @@ fi
 
 VERSION=$(git describe | sed 's#/v#:#g')
 
-if [[ ! "$VERSION" =~ ^$NAME:* ]]; then
-    echo "Last tag did not confirm to naming spec $NAME:1.1.1"
+if [[ ! "$VERSION" =~ ^$NAME:.* ]]; then
+    echo "Last tag did not conform to naming spec $NAME:1.1.1"
     exit 1
 fi
 
