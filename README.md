@@ -202,7 +202,14 @@ with open("result.yml",'wt') as outfile:
 ````
 
 ## Locking the environment
-Inside the diadem\_image\_template folder: The env file is the file specifying, what you need. For operational stability, we will now lock down, how the package manager fulfilled this request and record it. Call the script `../scripts/create_lock.sh`. Docker will now build a temporary image, install the environment and output an env.lock file. Commit it to the repository.
+Docker requires an explicit record of exact package versions to guarantee a reproducible software environment. 
+To create and commit this locked dependency file (`conda-lock.yml`), follow these steps:
+1. Navigate to the `diadem_image_template` folder. 
+2. In `env.yml` file: specify all required dependencies.
+3. Run the script `../scripts/create_lock.sh`. This script will use Docker to build a temporary image, 
+install the exact package versions determined by your specified dependencies, and generate an `conda-lock.yml` file 
+containing these versions.
+4. Commit `conda-lock.yml` file. 
 
 ### Push a git tag
 To allow for automatic versioning of the image, add a tag, like this:
