@@ -8,7 +8,7 @@ DFT Engine:
   Psi4 Settings:
     Basis: def2-SVP
     D3(BJ) Dispersion Correction: false
-    Functional: B3LYP
+    Functional: PBE0
     Geometry Convergence: normal
     Partial Charge Method: ESP
     Preoptimization: None
@@ -43,8 +43,8 @@ Molecule Settings:
   Calculate UV/VIS spectrum: false
   Charge: 0
   Excited State of Interest: 1
-  Molecule (Mol2): molecule_S0_opt.mol2
+  Molecule (Mol2): molecule_S1_opt.mol2
   Molecule Identifier: F6L
   Multiplicity: '1'
-  Optimize Molecule: true
+  Optimize Molecule: false
   Parameter File: default
