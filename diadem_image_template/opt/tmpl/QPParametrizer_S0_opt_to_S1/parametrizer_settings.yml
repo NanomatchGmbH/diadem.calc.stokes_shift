@@ -8,7 +8,7 @@ DFT Engine:
   Psi4 Settings:
     Basis: def2-SVP
     D3(BJ) Dispersion Correction: false
-    Functional: PBE0
+    Functional: wB97X
     Geometry Convergence: normal
     Partial Charge Method: ESP
     Preoptimization: None

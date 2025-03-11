@@ -26,14 +26,32 @@ specification:
       Engine: Psi4
       Memory (MB): 336000
       PySCF Settings:
-        basis: def2-SVP
+        Basis: def2-SVP
+        Functional: B3LYP
       Threads: 120
   QPParametrizer_S1_opt:
     DFT Engine:
       Engine: Psi4
       Memory (MB): 336000
       PySCF Settings:
-        basis: def2-SVP
+        Basis: def2-SVP
+        Functional: B3LYP
+      Threads: 120
+  QPParametrizer_S0_opt_to_S1:
+    DFT Engine:
+      Engine: Psi4
+      Memory (MB): 336000
+      PySCF Settings:
+        Basis: def2-SVP
+        Functional: wB97X
+      Threads: 120
+  QPParametrizer_S0_to_S1_opt:
+    DFT Engine:
+      Engine: Psi4
+      Memory (MB): 336000
+      PySCF Settings:
+        Basis: def2-SVP
+        Functional: wB97X
       Threads: 120
   global:
     ncpus: 120

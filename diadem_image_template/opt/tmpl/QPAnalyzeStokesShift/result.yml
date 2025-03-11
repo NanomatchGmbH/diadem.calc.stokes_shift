@@ -1,0 +1,15 @@
+StokesShift:
+  value: null
+  results:
+    'Stokes shift in eV':
+      value: null
+    'Stokes shift in nm':
+      value: null
+    'E(S1,S0_opt) in eV':
+      value: null
+    'E(S1,S0_opt) in nm':
+      value: null
+    'E(S1,S1_opt) in eV':
+      value: null
+    'E(S1,S1_opt) in nm':
+      value: null

@@ -194,7 +194,7 @@ class Executable(Enum):
     QPPARAMETRIZER_S1_opt =        'QPParametrizer_S1_opt'
     QPPARAMETRIZER_S0_opt_to_S1 =  'QPParametrizer_S0_opt_to_S1'
     QPPARAMETRIZER_S0_to_S1_opt =  'QPParametrizer_S0_to_S1_opt'
-
+    QP_ANALYZE_STOKES_SHIFT =       'QPAnalyzeStokesShift'
 
 # Define the WorkflowConfig dataclass with an extended constructor
 @dataclass
@@ -623,6 +623,8 @@ try:
 
         run_command(command)
 
+        shutil.copy('mol_data.yml', 's0.yml')
+
         distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
 
         # result
@@ -662,6 +664,8 @@ try:
 
         run_command(command)
 
+        shutil.copy('mol_data.yml', 's1.yml')
+
         distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
 
         # result
@@ -678,6 +682,39 @@ except Exception as e:
 
 
 
+# 4 -> 6
+# 5 -> 6
+previous_executable_4 = executable.QPPARAMETRIZER_S0_opt_to_S1  # absorption
+previous_executable_5 = executable.QPPARAMETRIZER_S0_to_S1_opt  # emission
+
+# 5 ###############################################
+executable = executable.QPPARAMETRIZER_S0_to_S1_opt
+###################################################
+
+
+try:
+    with ChangeDirectory(executable.value):
+
+        fetch_output_from_previous_executable(previous_executable_4.value)  # s0.yml
+        fetch_output_from_previous_executable(previous_executable_5.value)  # s1.yml
+
+        executable_path = find_executable_path(executable)
+        command = f"{executable_path} s0.yml s1.yml"
+
+        run_command(command)
+
+        distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
+
+        # result
+        local_resultdict = wf_config.result.get(executable)
+        get_result_from.QPAnalyzeStokesShift(local_resultdict, 'results.yml')
+        resultdict[inchiKey].update(local_resultdict)
+        with open("result.yml", 'wt') as outfile:
+            yaml.dump(local_resultdict, outfile)
+except Exception as e:
+    logger.error(f"An error occurred during {executable.value} processing: {e}")
+    distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
+    sys.exit(1)
 
 
 
