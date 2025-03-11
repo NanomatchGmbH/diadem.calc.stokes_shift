@@ -192,6 +192,8 @@ class Executable(Enum):
     XTB = 'xtb'
     QPPARAMETRIZER_S0_opt = 'QPParametrizer_S0_opt'
     QPPARAMETRIZER_S1_opt = 'QPParametrizer_S1_opt'
+    QPPARAMETRIZER_absorbtion = 'QPParametrizer_absorbtion'
+    QPPARAMETRIZER_emission = 'QPParametrizer_emission'
 
 
 # Define the WorkflowConfig dataclass with an extended constructor
@@ -557,7 +559,7 @@ stop_workflow_after_module(stop_module, resultdict, executable, logger)
 # 2 -> 3
 previous_executable = executable  #
 
-# 2 #########################################
+# 3 #########################################
 executable = executable.QPPARAMETRIZER_S1_opt
 #############################################
 
@@ -594,7 +596,7 @@ except Exception as e:
 stop_workflow_after_module(stop_module, resultdict, executable, logger)
 
 
-# 3 -> 4
+# 2 -> 4
 previous_executable = executable.QPPARAMETRIZER_S0_opt  # S0 optimized geometry!
 
 # 4 #############################################
