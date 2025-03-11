@@ -633,6 +633,41 @@ except Exception as e:
 stop_workflow_after_module(stop_module, resultdict, executable, logger)
 
 
+# 3 -> 5
+previous_executable = executable.QPPARAMETRIZER_S1_opt  # S1 optimized geometry!
+
+# 5 ##############################################
+executable = executable.QPPARAMETRIZER_S1_emission
+##################################################
+
+
+try:
+    with ChangeDirectory(executable.value):
+
+        fetch_output_from_previous_executable(previous_executable.value)
+
+        executable_path = find_executable_path(executable.value.split('_')[0])  # QPParametrizer_* -> QPParametrizer
+        command = f"{executable_path}"
+
+        source_path = f'{opt_tmpl}/{executable.value}/parametrizer_settings.yml'
+        destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
+        copy_with_changes(source_path, changes[executable.value], destination_path)
+
+        run_command(command)
+
+        distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
+
+        # result
+        local_resultdict = wf_config.result.get(executable)
+        get_result_from.QPParametrizer(local_resultdict, 'mol_data.yml')
+        resultdict[inchiKey].update(local_resultdict)
+        with open("result.yml", 'wt') as outfile:
+            yaml.dump(local_resultdict,
+                      outfile)  # we save the result locally in QPP folder in case the script will crash on a later stage.
+except Exception as e:
+    logger.error(f"An error occurred during {executable.value} processing: {e}")
+    distribute_files(executable, wf_config, diadem_dir_abs_path, error_happened=True, debug=debug)
+    sys.exit(1)
 
 
 
