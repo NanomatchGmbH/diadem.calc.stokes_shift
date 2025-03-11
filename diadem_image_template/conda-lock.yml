@@ -1973,7 +1973,7 @@ package:
   category: main
   optional: false
 - name: libsystemd0
-  version: '257.3'
+  version: '257.4'
   manager: conda
   platform: linux-64
   dependencies:
@@ -1983,11 +1983,11 @@ package:
     libgcrypt-lib: '>=1.11.0,<2.0a0'
     liblzma: '>=5.6.4,<6.0a0'
     lz4-c: '>=1.10.0,<1.11.0a0'
-    zstd: '>=1.5.6,<1.6.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libsystemd0-257.3-h3dc2cb9_0.conda
+    zstd: '>=1.5.7,<1.6.0a0'
+  url: https://conda.anaconda.org/conda-forge/linux-64/libsystemd0-257.4-h3dc2cb9_0.conda
   hash:
-    md5: df057752e83bd254f6d65646eb67cd2e
-    sha256: dd566e2ef4a83b27d2b26d988cbbed50456294892744639f30f19954d2ee3287
+    md5: cb9e2966356c3cd8b91fc3998cc4eaa0
+    sha256: 5a073ee10beb11a8616277b37f09971d14fe6b1311c1ab69620c030537f0eefd
   category: main
   optional: false
 - name: libtiff
@@ -2012,17 +2012,17 @@ package:
   category: main
   optional: false
 - name: libudev1
-  version: '257.3'
+  version: '257.4'
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
     libcap: '>=2.71,<2.72.0a0'
     libgcc: '>=13'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libudev1-257.3-h9a4d06a_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libudev1-257.4-h9a4d06a_0.conda
   hash:
-    md5: e7817c912b25f7599a50eba270e1a463
-    sha256: 35bdafc4b02f61a327f82bb11263c31466367e50b4e5efab3d413509315cb0a7
+    md5: 8b87f46f586167c54b2d4c0fd4a72001
+    sha256: 65ebc2185cdc008f8da92864e8063e60293c59134b11b13e4bc44fd6f6e04eec
   category: main
   optional: false
 - name: libuuid
