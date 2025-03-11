@@ -193,7 +193,7 @@ class Executable(Enum):
     QPPARAMETRIZER_S0_opt =        'QPParametrizer_S0_opt'
     QPPARAMETRIZER_S1_opt =        'QPParametrizer_S1_opt'
     QPPARAMETRIZER_S0_opt_to_S1 =  'QPParametrizer_S0_opt_to_S1'
-    QPPARAMETRIZER_S0_to_S1_opt =   'QPParametrizer_S0_to_S1_opt'
+    QPPARAMETRIZER_S0_to_S1_opt =  'QPParametrizer_S0_to_S1_opt'
 
 
 # Define the WorkflowConfig dataclass with an extended constructor
@@ -240,10 +240,15 @@ class WorkflowConfig:
         for executable in Executable:
             yaml_path = pathlib.Path(base_directory) / executable.value / file_name
             if yaml_path.is_file():
-                with open(yaml_path, 'r') as file:
-                    yaml_dict[executable] = yaml.safe_load(file)
+                try:
+                    with open(yaml_path, 'r') as file:
+                        data = yaml.safe_load(file)
+                        yaml_dict[executable] = data if data is not None else {}  # Ensure empty files return {}
+                except yaml.YAMLError as e:
+                    logger.error(f"Error parsing YAML for {executable.value}: {e}")
+                    yaml_dict[executable] = {}
             else:
-                yaml_dict[executable] = {}
+                yaml_dict[executable] = {}  # Treat missing files as empty dict
         return yaml_dict
 
 
