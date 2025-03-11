@@ -1,0 +1,6 @@
+DFT_error_files
+*molecule.*
+mol_data.yml
+Traceback*
+*err
+*out
