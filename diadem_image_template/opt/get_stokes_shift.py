@@ -688,7 +688,7 @@ previous_executable_4 = executable.QPPARAMETRIZER_S0_opt_to_S1  # absorption
 previous_executable_5 = executable.QPPARAMETRIZER_S0_to_S1_opt  # emission
 
 # 5 ###############################################
-executable = executable.QPPARAMETRIZER_S0_to_S1_opt
+executable = executable.QP_ANALYZE_STOKES_SHIFT
 ###################################################
 
 
@@ -698,7 +698,7 @@ try:
         fetch_output_from_previous_executable(previous_executable_4.value)  # s0.yml
         fetch_output_from_previous_executable(previous_executable_5.value)  # s1.yml
 
-        executable_path = find_executable_path(executable)
+        executable_path = find_executable_path(executable.value)
         command = f"{executable_path} s0.yml s1.yml"
 
         run_command(command)
