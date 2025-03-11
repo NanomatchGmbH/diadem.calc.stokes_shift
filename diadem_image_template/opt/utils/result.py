@@ -14,28 +14,44 @@ import math
 
 class get_result_from:
     @staticmethod
-    def QPParametrizer(local_result: Dict[str, Any], yaml_file: str) -> None:
+    def QPParametrizer(local_result: Dict[str, Any], mol_data_yml: str) -> None:
         """
-        yaml_file: mol_data.yml, QPParametrizer output.
-        data_dict: template result.ynl from /opt/tmpl/ folders.
+        mol_data_yml: mol_data.yml, QPParametrizer output.
+        local_result: template result.yml from /opt/tmpl/ folders.
+
+        The field in "mol_data.yml" will be copied to result.yaml (local_result) if both conditions are met:
+        1. the field exists in "mol_data.yml"
+        2. the field exists in "opt/tmpl/QPParametrizer_*/result.yml"
         """
 
         def get_dipole_value_from_vector(vector_dipole: List):
             return float(np.sqrt(vector_dipole[0] ** 2 + vector_dipole[1] ** 2 + vector_dipole[2] ** 2))
 
-        with open(yaml_file, 'r') as file:
-            yaml_data = yaml.safe_load(file)
+        with open(mol_data_yml, 'r') as file:
+            mol_data = yaml.safe_load(file)
 
-        if 'homo energy' in yaml_data:
-            local_result['HOMO']['value'] = yaml_data['homo energy']
+        if 'homo energy' in mol_data and 'HOMO' in local_result:
+            local_result['HOMO']['value'] = mol_data['homo energy']
 
-        if 'lumo energy' in yaml_data:
-            local_result['LUMO']['value'] = yaml_data['lumo energy']
+        if 'lumo energy' in mol_data and 'LUMO' in local_result:
+            local_result['LUMO']['value'] = mol_data['lumo energy']
 
-        if 'dipole' in yaml_data:
-            dipole_value = get_dipole_value_from_vector(yaml_data['dipole'])
+        if 'dipole' in mol_data and 'dipole' in local_result:
+            dipole_value = get_dipole_value_from_vector(mol_data['dipole'])
             local_result['dipole']['value'] = dipole_value
-            local_result['dipole']['results']['dipole_vector'] = yaml_data['dipole']
+            local_result['dipole']['results']['dipole_vector'] = mol_data['dipole']
+
+        # all excitation energies. Map: Excitation energy <n> => E(S<n+1>)
+        for key, value in mol_data.items():
+            if key.startswith("Excitation energy "):
+                index = key.split()[-1]
+                s_key = f"E(S{index})"
+                if s_key in local_result:
+                    local_result[s_key] = value
+
+        # total energy
+        if 'total_energy' in mol_data and 'total_energy' in local_result:
+            local_result['total_energy']['value'] = mol_data['total_energy']
 
     @staticmethod
     def Deposit(local_result: Dict[str, Any], filepath: str) -> None:
