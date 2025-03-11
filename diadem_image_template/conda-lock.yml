@@ -1149,17 +1149,17 @@ package:
   category: main
   optional: false
 - name: libcap
-  version: '2.71'
+  version: '2.75'
   manager: conda
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
     attr: '>=2.5.1,<2.6.0a0'
     libgcc: '>=13'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libcap-2.71-h39aace5_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libcap-2.75-h39aace5_0.conda
   hash:
-    md5: dd19e4e3043f6948bd7454b946ee0983
-    sha256: 2bbefac94f4ab8ff7c64dc843238b6c8edcc9ff1f2b5a0a48407a904dc7ccfb2
+    md5: c44c16d6976d2aebbd65894d7741e67e
+    sha256: 9c84448305e7c9cc44ccec7757cf5afcb5a021f4579aa750a1fa6ea398783950
   category: main
   optional: false
 - name: libcblas
@@ -1978,16 +1978,16 @@ package:
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libcap: '>=2.71,<2.72.0a0'
+    libcap: '>=2.75,<2.76.0a0'
     libgcc: '>=13'
     libgcrypt-lib: '>=1.11.0,<2.0a0'
     liblzma: '>=5.6.4,<6.0a0'
     lz4-c: '>=1.10.0,<1.11.0a0'
     zstd: '>=1.5.7,<1.6.0a0'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libsystemd0-257.4-h3dc2cb9_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libsystemd0-257.4-h4e0b6ca_1.conda
   hash:
-    md5: cb9e2966356c3cd8b91fc3998cc4eaa0
-    sha256: 5a073ee10beb11a8616277b37f09971d14fe6b1311c1ab69620c030537f0eefd
+    md5: 04bcf3055e51f8dde6fab9672fb9fca0
+    sha256: 5aa2ba63747ad3b6e717f025c9d2ab4bb32c0d366e1ef81669ffa73b1d9af4a2
   category: main
   optional: false
 - name: libtiff
@@ -2017,12 +2017,12 @@ package:
   platform: linux-64
   dependencies:
     __glibc: '>=2.17,<3.0.a0'
-    libcap: '>=2.71,<2.72.0a0'
+    libcap: '>=2.75,<2.76.0a0'
     libgcc: '>=13'
-  url: https://conda.anaconda.org/conda-forge/linux-64/libudev1-257.4-h9a4d06a_0.conda
+  url: https://conda.anaconda.org/conda-forge/linux-64/libudev1-257.4-hbe16f8c_1.conda
   hash:
-    md5: 8b87f46f586167c54b2d4c0fd4a72001
-    sha256: 65ebc2185cdc008f8da92864e8063e60293c59134b11b13e4bc44fd6f6e04eec
+    md5: d6716795cd81476ac2f5465f1b1cde75
+    sha256: 56e55a7e7380a980b418c282cb0240b3ac55ab9308800823ff031a9529e2f013
   category: main
   optional: false
 - name: libuuid

@@ -190,10 +190,10 @@ def find_executable_path(executable_name):
 
 class Executable(Enum):
     XTB = 'xtb'
-    QPPARAMETRIZER_S0_opt = 'QPParametrizer_S0_opt'
-    QPPARAMETRIZER_S1_opt = 'QPParametrizer_S1_opt'
-    QPPARAMETRIZER_absorbtion = 'QPParametrizer_absorbtion'
-    QPPARAMETRIZER_emission = 'QPParametrizer_emission'
+    QPPARAMETRIZER_S0_opt =        'QPParametrizer_S0_opt'
+    QPPARAMETRIZER_S1_opt =        'QPParametrizer_S1_opt'
+    QPPARAMETRIZER_S0_opt_to_S1 =  'QPParametrizer_S0_opt_to_S1'
+    QPPARAMETRIZER_S0_to_S1_opt =   'QPParametrizer_S0_to_S1_opt'
 
 
 # Define the WorkflowConfig dataclass with an extended constructor
@@ -599,9 +599,9 @@ stop_workflow_after_module(stop_module, resultdict, executable, logger)
 # 2 -> 4
 previous_executable = executable.QPPARAMETRIZER_S0_opt  # S0 optimized geometry!
 
-# 4 #############################################
-executable = executable.QPPARAMETRIZER_S0_absorbtion
-#################################################
+# 4 ###############################################
+executable = executable.QPPARAMETRIZER_S0_opt_to_S1
+###################################################
 
 
 try:
@@ -638,9 +638,9 @@ stop_workflow_after_module(stop_module, resultdict, executable, logger)
 # 3 -> 5
 previous_executable = executable.QPPARAMETRIZER_S1_opt  # S1 optimized geometry!
 
-# 5 ##############################################
-executable = executable.QPPARAMETRIZER_S1_emission
-##################################################
+# 5 ###############################################
+executable = executable.QPPARAMETRIZER_S0_to_S1_opt
+###################################################
 
 
 try:
