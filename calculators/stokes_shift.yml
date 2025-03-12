@@ -55,4 +55,4 @@ specification:
       Threads: 120
   global:
     ncpus: 120
-version: 0.0.1
+version: 0.0.2
