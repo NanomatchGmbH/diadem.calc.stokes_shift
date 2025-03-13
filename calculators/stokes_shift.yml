@@ -2,24 +2,28 @@ calculatorId: stokes_shift
 files:
 - molecule_S0_opt.mol2
 - molecule_S1_opt.mol2
-image: diadem.azurecr.io/stokes_shift:0.0.3
+image: diadem.azurecr.io/stokes_shift:0.0.4
 onDemandEnabled: true
 operationFiles:
   debugFiles:
   - QPParametrizer_S0_opt_debugFiles.zip
   - QPParametrizer_S1_opt_debugFiles.zip
+  - QPParametrizer_S0_opt_to_S1_debugFiles.zip
+  - QPParametrizer_S0_to_S1_opt_debugFiles.zip
   errorStageOut:
   - QPParametrizer_S0_opt_errorStageOut.zip
   - QPParametrizer_S1_opt_errorStageOut.zip
+  - QPParametrizer_S0_opt_to_S1_errorStageOut.zip
+  - QPParametrizer_S0_to_S1_opt_errorStageOut.zip
   optionalFiles:
   - QPParametrizer_S0_opt_optionalFiles.zip
   - QPParametrizer_S1_opt_optionalFiles.zip
+  - QPParametrizer_S0_opt_to_S1_optionalFiles.zip
+  - QPParametrizer_S0_to_S1_opt_optionalFiles.zip
 poolId: Standard_HB120rs_v3
 price: 50
 provides:
-- HOMO
-- LUMO
-- dipole
+- StokesShift
 specification:
   QPParametrizer_S0_opt:
     DFT Engine:
@@ -55,4 +59,4 @@ specification:
       Threads: 120
   global:
     ncpus: 120
-version: 0.0.3
+version: 0.0.4
