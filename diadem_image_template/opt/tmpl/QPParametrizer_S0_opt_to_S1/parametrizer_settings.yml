@@ -15,7 +15,7 @@ DFT Engine:
     SCF Convergence: normal
   PySCF Settings:
     Basis: def2-SVP
-    functional: M06-2X
+    Functional: M06-2X
     Partial Charge Method: ESP
     Preoptimization: None
     gridsize: fast
