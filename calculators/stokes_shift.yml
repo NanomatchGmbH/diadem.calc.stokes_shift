@@ -29,7 +29,7 @@ specification:
     DFT Engine:
       Engine: PySCF
       Memory (MB): 336000
-      Psi4 Settings:
+      PySCF Settings:
         Basis: def2-SVP
         Functional: BLYP35
       Threads: 120
@@ -37,7 +37,7 @@ specification:
     DFT Engine:
       Engine: PySCF
       Memory (MB): 336000
-      Psi4 Settings:
+      PySCF Settings:
         Basis: def2-SVP
         Functional: BLYP35
       Threads: 120
@@ -45,7 +45,7 @@ specification:
     DFT Engine:
       Engine: PySCF
       Memory (MB): 336000
-      Psi4 Settings:
+      PySCF Settings:
         Basis: def2-SVP
         Functional: M06-2X
       Threads: 120
@@ -53,7 +53,7 @@ specification:
     DFT Engine:
       Engine: PySCF
       Memory (MB): 336000
-      Psi4 Settings:
+      PySCF Settings:
         Basis: def2-SVP
         Functional: M06-2X
       Threads: 120
