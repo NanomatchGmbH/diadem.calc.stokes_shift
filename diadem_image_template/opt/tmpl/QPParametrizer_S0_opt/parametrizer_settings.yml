@@ -1,5 +1,5 @@
 DFT Engine:
-  Engine: Psi4
+  Engine: PySCF
   Memory (MB): 16000.0
   Threads: '4'
   DFTB+ Settings:
@@ -14,11 +14,18 @@ DFT Engine:
     Preoptimization: None
     SCF Convergence: normal
   PySCF Settings:
-    basis: def2-SVP
-    functional: B3LYP
-    Partial Charge Method: ESP
-    Preoptimization: None
-    gridsize: fast
+    Basis: def2-SVP
+    D3(BJ) Dispersion Correction: false
+    Functional: BLYP35
+    Partial Charge Method: Mulliken
+    Preoptimization: DFTB
+    td_opts_override: {conv_tol: 1.0E-5, level_shift: 0.5, deg_eia_thresh: 1.0E-2, max_cycle = 200}
+    td_grad_override: {cphf_conv_tol: 1.0E-5, cphf_max_cycle: 200}
+    geomeTRIC_override: {coordsys: tric, maxiter: 100, trust: 0.33333}
+    Geometry Convergence: NWCHEM_LOOSE
+    gridsize: 1
+    tda: True
+    mf: {level_shift: 0.5, conv_tol: 1.0E-6}
   Turbomole Settings:
     Basis: def2-SVP
     D3(BJ) Dispersion Correction: false
