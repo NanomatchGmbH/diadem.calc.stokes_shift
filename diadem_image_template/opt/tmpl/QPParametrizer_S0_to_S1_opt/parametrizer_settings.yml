@@ -14,7 +14,7 @@ DFT Engine:
     Preoptimization: None
     SCF Convergence: normal
   PySCF Settings:
-    basis: def2-SVP
+    Basis: def2-SVP
     functional: M06-2X
     Partial Charge Method: ESP
     Preoptimization: None
