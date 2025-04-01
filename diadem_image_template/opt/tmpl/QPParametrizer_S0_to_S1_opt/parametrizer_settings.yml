@@ -16,9 +16,15 @@ DFT Engine:
   PySCF Settings:
     Basis: def2-SVP
     Functional: M06-2X
-    Partial Charge Method: ESP
-    Preoptimization: None
-    gridsize: fast
+    Partial Charge Method: No Charges
+    gridsize: 1
+    Preoptimization: DFTB
+    td_opts_override: {conv_tol: 1.0E-6, level_shift: 0.5, deg_eia_thresh: 1.0E-2, max_cycle = 300}
+    td_grad_override: {cphf_conv_tol: 1.0E-6, cphf_max_cycle: 300}
+    geomeTRIC_override: {coordsys: tric, maxiter: 100, trust: 0.33333}
+    Geometry Convergence: TURBOMOLE
+    tda: False
+    mf: {level_shift: 0.5, conv_tol: 1.0E-8}
   Turbomole Settings:
     Basis: def2-SVP
     D3(BJ) Dispersion Correction: false
