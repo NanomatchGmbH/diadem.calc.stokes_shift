@@ -4,11 +4,11 @@
 # molecule.yml and a calculator.yml in the work directory.
 
 # Get the number of CPUs (if needed, replace this logic with your actual CPU detection script)
-ncpus=120
+# ncpus=120
 ALLOW_BUNDLE=true  # Set this to false to prevent bundle creation. False will save some time in production.
 
-export OMP_NUM_THREADS=${ncpus}
-export UC_PROCESSORS_PER_NODE=${ncpus}
+# export OMP_NUM_THREADS=${ncpus}
+# export UC_PROCESSORS_PER_NODE=${ncpus}
 export NM_LICENSE_SERVER=123.123.123.123
 
 python /opt/get_stokes_shift.py
