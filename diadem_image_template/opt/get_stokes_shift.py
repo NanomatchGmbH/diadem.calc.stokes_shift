@@ -194,7 +194,7 @@ class Executable(Enum):
     QPPARAMETRIZER_S1_opt =        'QPParametrizer_S1_opt'
     QPPARAMETRIZER_S0_opt_to_S1 =  'QPParametrizer_S0_opt_to_S1'
     QPPARAMETRIZER_S0_to_S1_opt =  'QPParametrizer_S0_to_S1_opt'
-    QP_ANALYZE_STOKES_SHIFT =       'QPAnalyzeStokesShift'
+    QP_ANALYZE_STOKES_SHIFT =      'QPAnalyzeStokesShift'
 
 # Define the WorkflowConfig dataclass with an extended constructor
 @dataclass
@@ -503,7 +503,7 @@ try:
         # we optimize the bad 3d structure [initial_conformer]
         logger.info("xtb optimization of 3D conformer of the molecule . . .")
         command = f"{executable.value} {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
-        run_command(command)
+        run_command(command, stderr_file='stderr', stdout_file='stdout')
         xtb_preoptimized_xyz = 'xtbopt.xyz'
         required_files = [xtb_preoptimized_xyz]
         check_required_output_files_exist(required_files)
@@ -581,7 +581,7 @@ try:
         destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
         copy_with_changes(source_path, changes[executable.value], destination_path)
 
-        run_command(command)
+        run_command(command, stderr_file='stderr', stdout_file='stdout')
 
         shutil.copy('output_molecule.mol2', 'molecule_S1_opt.mol2')
         distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
@@ -621,7 +621,7 @@ try:
         destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
         copy_with_changes(source_path, changes[executable.value], destination_path)
 
-        run_command(command)
+        run_command(command, stderr_file="stderr", stdout_file="stdout")
 
         shutil.copy('mol_data.yml', 's0.yml')
 
@@ -662,7 +662,7 @@ try:
         destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
         copy_with_changes(source_path, changes[executable.value], destination_path)
 
-        run_command(command)
+        run_command(command, stderr_file="stderr", stdout_file="stdout")
 
         shutil.copy('mol_data.yml', 's1.yml')
 
