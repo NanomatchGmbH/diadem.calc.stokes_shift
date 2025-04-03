@@ -495,7 +495,7 @@ try:
         logger.info("Generate 3D conformer of the molecule . . .")
         initial_conformer_xyz = 'mol.xyz'
         command = f"obabel -i inchi {mol_inchi} -o xyz -O {initial_conformer_xyz} --gen3d"
-        run_command(command, stderr_file="stderr", stdout_file="stdout")
+        run_command(command, use_shell=True, stderr_file="stderr", stdout_file="stdout")
         required_files = [initial_conformer_xyz]
         check_required_output_files_exist(initial_conformer_xyz)
 
