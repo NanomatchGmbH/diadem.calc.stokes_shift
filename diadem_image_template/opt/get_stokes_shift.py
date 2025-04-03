@@ -542,7 +542,7 @@ try:
         destination_path = pathlib.Path.cwd() / 'parametrizer_settings.yml'  # Current directory
         copy_with_changes(source_path, changes[executable.value], destination_path)
 
-        run_command(command)
+        run_command(command, stdout_file="stdout", stderr_file="stderr")
 
         shutil.copy('output_molecule.mol2', 'molecule_S0_opt.mol2')
         distribute_files(executable, wf_config, diadem_dir_abs_path, debug=debug)
