@@ -1,0 +1,10 @@
+{
+  "0": {
+    "name": "stokes_shift",
+    "equivalentNames": ["Stokes Shift"],
+    "calcRef": [],
+    "isSearchable": true,
+    "valueType": "num",
+    "unit": "eV"
+  }
+}
