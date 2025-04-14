@@ -2,7 +2,7 @@ calculatorId: stokes_shift
 files:
 - molecule_S0_opt.mol2
 - molecule_S1_opt.mol2
-image: diadem.azurecr.io/stokes_shift:0.0.7
+image: diadem.azurecr.io/stokes_shift:0.0.8
 onDemandEnabled: true
 operationFiles:
   debugFiles:
@@ -23,7 +23,7 @@ operationFiles:
 poolId: Standard_HB120rs_v3
 price: 50
 provides:
-- StokesShift
+- stokes_shift
 specification:
   QPParametrizer_S0_opt:
     DFT Engine:
@@ -59,4 +59,4 @@ specification:
       Threads: 120
   global:
     ncpus: 120
-version: 0.0.7
+version: 0.0.8
