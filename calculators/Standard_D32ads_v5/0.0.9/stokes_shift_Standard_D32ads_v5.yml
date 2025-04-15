@@ -1,0 +1,62 @@
+calculatorId: stokes_shift
+files:
+- molecule_S0_opt.mol2
+- molecule_S1_opt.mol2
+image: diadem.azurecr.io/stokes_shift:0.0.9
+onDemandEnabled: true
+operationFiles:
+  debugFiles:
+  - QPParametrizer_S0_opt_debugFiles.zip
+  - QPParametrizer_S1_opt_debugFiles.zip
+  - QPParametrizer_S0_opt_to_S1_debugFiles.zip
+  - QPParametrizer_S0_to_S1_opt_debugFiles.zip
+  errorStageOut:
+  - QPParametrizer_S0_opt_errorStageOut.zip
+  - QPParametrizer_S1_opt_errorStageOut.zip
+  - QPParametrizer_S0_opt_to_S1_errorStageOut.zip
+  - QPParametrizer_S0_to_S1_opt_errorStageOut.zip
+  optionalFiles:
+  - QPParametrizer_S0_opt_optionalFiles.zip
+  - QPParametrizer_S1_opt_optionalFiles.zip
+  - QPParametrizer_S0_opt_to_S1_optionalFiles.zip
+  - QPParametrizer_S0_to_S1_opt_optionalFiles.zip
+poolId: Standard_D32ads_v5
+price: 50
+provides:
+- stokes_shift
+specification:
+  QPParametrizer_S0_opt:
+    DFT Engine:
+      Engine: PySCF
+      Memory (MB): 336000
+      PySCF Settings:
+        Basis: def2-SVP
+        Functional: BLYP35
+      Threads: 16
+  QPParametrizer_S1_opt:
+    DFT Engine:
+      Engine: PySCF
+      Memory (MB): 336000
+      PySCF Settings:
+        Basis: def2-SVP
+        Functional: BLYP35
+      Threads: 16
+  QPParametrizer_S0_opt_to_S1:
+    DFT Engine:
+      Engine: PySCF
+      Memory (MB): 336000
+      PySCF Settings:
+        Basis: def2-SVP
+        Functional: M06-2X
+      Threads: 16
+  QPParametrizer_S0_to_S1_opt:
+    DFT Engine:
+      Engine: PySCF
+      Memory (MB): 336000
+      PySCF Settings:
+        Basis: def2-SVP
+        Functional: M06-2X
+      Threads: 16
+  global:
+    ncpus: 16
+version: 0.0.9
