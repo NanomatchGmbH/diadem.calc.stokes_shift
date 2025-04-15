@@ -2,7 +2,7 @@ calculatorId: stokes_shift
 files:
 - molecule_S0_opt.mol2
 - molecule_S1_opt.mol2
-image: diadem.azurecr.io/stokes_shift:0.0.8
+image: diadem.azurecr.io/stokes_shift:0.1.0
 onDemandEnabled: true
 operationFiles:
   debugFiles:
@@ -59,4 +59,4 @@ specification:
       Threads: 120
   global:
     ncpus: 120
-version: 0.0.8
+version: 0.1.0
