@@ -1,0 +1,15 @@
+{
+  "0": {
+    "molId": "RWKRWNGNLGKAGT-UHFFFAOYSA-N",
+    "propertyTypeId": "604863ea-2184-46a1-b942-f6f636d74461",
+    "type": "orbital_energy",
+    "subtype": "HOMO",
+    "calculatorref": "12d12b12-803d-451f-87b4-0f92bfe0c342",
+    "calculatorversion": "1.0.0",
+    "value": -100.0,
+    "result": {
+      "raw": -100.0
+    },
+    "isPreComputedProperty": true
+  }
+}
