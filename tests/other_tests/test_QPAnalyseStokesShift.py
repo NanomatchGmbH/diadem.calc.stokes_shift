@@ -8,7 +8,7 @@ from diadem_image_template.opt.utils.result import get_result_from
 def test_QPAnalyzeStokesShift():
     # Define initial local_result dictionary
     local_result = {
-        'StokesShift': {
+        'stokes_shift': {
             'value': None,
             'results': {
                 'Stokes shift in eV': {'value': None},
@@ -44,7 +44,7 @@ def test_QPAnalyzeStokesShift():
 
         # Expected values
         expected_result = {
-            'StokesShift': {
+            'stokes_shift': {
                 'value': -0.034850253288116306,
                 'results': {
                     'Stokes shift in eV': -0.034850253288116306,
