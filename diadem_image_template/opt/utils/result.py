@@ -164,19 +164,19 @@ class get_result_from:
         # plt.show()
 
     @staticmethod
-    def QPAnalyzeStokesShift(local_result, results_yml):
+    def QPAnalyzeStokesShift(local_result, results_yml, stokes_shift_name = "stokes_shift"):
         
         with open(results_yml, 'r') as file:
             results_yml_dict = yaml.safe_load(file)
 
         stokes_shift_results = results_yml_dict['Stokes shift results:']
         if 'Stokes shift in eV::' in stokes_shift_results:
-            local_result['StokesShift']['value'] = stokes_shift_results['Stokes shift in eV::']
-            local_result['StokesShift']['results']['Stokes shift in eV'] = stokes_shift_results['Stokes shift in eV::']
+            local_result[stokes_shift_name]['value'] = stokes_shift_results['Stokes shift in eV::']
+            local_result[stokes_shift_name]['results']['Stokes shift in eV'] = stokes_shift_results['Stokes shift in eV::']
         if 'Stokes shift in eV::' in stokes_shift_results:
-            local_result['StokesShift']['results']['Stokes shift in nm'] = stokes_shift_results['Stokes shift in nm::']
-        if 'Excitation energy S0-S1 (S0 opt geometry) in eV:' in stokes_shift_results and 'results' in local_result.get('StokesShift'):
-            local_result['StokesShift']['results']['E(S1,S0_opt) in eV'] = stokes_shift_results['Excitation energy S0-S1 (S0 opt geometry) in eV:']
-            local_result['StokesShift']['results']['E(S1,S0_opt) in nm'] = stokes_shift_results['Excitation energy S0-S1 (S0 opt geometry) in nm:']
-            local_result['StokesShift']['results']['E(S1,S1_opt) in eV'] = stokes_shift_results['Excitation energy S0-S1 (S1 opt geometry) in eV:']
-            local_result['StokesShift']['results']['E(S1,S1_opt) in nm'] = stokes_shift_results['Excitation energy S0-S1 (S1 opt geometry) in nm:']
+            local_result[stokes_shift_name]['results']['Stokes shift in nm'] = stokes_shift_results['Stokes shift in nm::']
+        if 'Excitation energy S0-S1 (S0 opt geometry) in eV:' in stokes_shift_results and 'results' in local_result.get(stokes_shift_name):
+            local_result[stokes_shift_name]['results']['E(S1,S0_opt) in eV'] = stokes_shift_results['Excitation energy S0-S1 (S0 opt geometry) in eV:']
+            local_result[stokes_shift_name]['results']['E(S1,S0_opt) in nm'] = stokes_shift_results['Excitation energy S0-S1 (S0 opt geometry) in nm:']
+            local_result[stokes_shift_name]['results']['E(S1,S1_opt) in eV'] = stokes_shift_results['Excitation energy S0-S1 (S1 opt geometry) in eV:']
+            local_result[stokes_shift_name]['results']['E(S1,S1_opt) in nm'] = stokes_shift_results['Excitation energy S0-S1 (S1 opt geometry) in nm:']

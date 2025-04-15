@@ -1,4 +1,4 @@
-StokesShift:
+stokes_shift:
   value: null
   results:
     'Stokes shift in eV':
