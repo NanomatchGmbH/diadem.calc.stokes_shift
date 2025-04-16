@@ -502,7 +502,11 @@ try:
         # optimize using xtb from xtb, not from parametrizer.
         # we optimize the bad 3d structure [initial_conformer]
         logger.info("xtb optimization of 3D conformer of the molecule . . .")
-        command = f"{executable.value} {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
+        try:
+            command = f"{executable.value} {initial_conformer_xyz} --opt"  # outputs xtbout.xyz
+        except:
+            command = f"{executable.value} {initial_conformer_xyz} --opt veryloose"  # outputs xtbout.xyz
+
         run_command(command, stderr_file='stderr', stdout_file='stdout')
         xtb_preoptimized_xyz = 'xtbopt.xyz'
         required_files = [xtb_preoptimized_xyz]
