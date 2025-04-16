@@ -37,7 +37,7 @@ def calculators() -> list[pathlib.Path]:
 #    os.chmod(path, 0o777)
 #    func(path)
 
-optional_files_to_get_back = ['molecule_0.spf', 'molecule_0.pdb', 'structure.cml', 'diadem_files/mobility_vs_sqrt_field.png']
+optional_files_to_get_back = []
 
 
 @pytest.mark.parametrize("molecule, calculator", itertools.product(molecules(), calculators()))
