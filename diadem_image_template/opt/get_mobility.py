@@ -311,7 +311,6 @@ if debug:
     logger.info(f"{os.getcwd()=}")
     list_installed_micromamba_packages()
     env_vars = dict(os.environ)
-    logger.info("Environment variables at start", environment=env_vars)
     # Adding context for some critical environment variables
     logger.info("Active Conda environment", conda_env=env_vars.get('CONDA_DEFAULT_ENV', 'N/A'))
     logger.info("Number of OpenMP threads", omp_threads=env_vars.get('OMP_NUM_THREADS', 'N/A'))
